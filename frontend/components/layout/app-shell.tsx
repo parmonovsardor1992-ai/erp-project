@@ -19,14 +19,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { useUiStore } from '@/store/ui-store';
 import { ru } from '@/lib/i18n';
+import { useUiStore } from '@/store/ui-store';
 
 const items = [
   { href: '/dashboard', label: ru.nav.dashboard, icon: LayoutDashboard },
   { href: '/cash', label: ru.nav.cash, icon: Wallet },
   { href: '/bank', label: ru.nav.bank, icon: Landmark },
   { href: '/card', label: ru.nav.card, icon: CreditCard },
+  { href: '/exchanges', label: ru.nav.exchanges, icon: WalletCards },
   { href: '/orders', label: ru.nav.orders, icon: BriefcaseBusiness },
   { href: '/salary', label: ru.nav.salary, icon: BarChart3 },
   { href: '/salary-accruals', label: ru.nav.salaryAccruals, icon: WalletCards },

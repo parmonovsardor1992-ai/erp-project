@@ -122,6 +122,19 @@ export type UtilityAccrual = {
   expenseArticle?: ExpenseArticle;
 };
 
+export type ExchangeTransaction = {
+  id: string;
+  date: string;
+  fromAccount: CashAccount;
+  toAccount: CashAccount;
+  currencyFrom: 'UZS' | 'USD';
+  currencyTo: 'UZS' | 'USD';
+  amountFrom: string;
+  amountTo: string;
+  rate: string;
+  comment?: string;
+};
+
 export type SalaryAccrual = {
   id: string;
   date: string;

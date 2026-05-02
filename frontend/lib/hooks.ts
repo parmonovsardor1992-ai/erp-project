@@ -34,6 +34,109 @@ export function useCreateTransaction() {
   });
 }
 
+export function useUpdateTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) => api.updateTransaction(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      await queryClient.invalidateQueries({ queryKey: ['balances'] });
+      await queryClient.invalidateQueries({ queryKey: ['point-balances'] });
+      await queryClient.invalidateQueries({ queryKey: ['balance-report'] });
+    },
+  });
+}
+
+export function useDeleteTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteTransaction,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      await queryClient.invalidateQueries({ queryKey: ['balances'] });
+      await queryClient.invalidateQueries({ queryKey: ['point-balances'] });
+      await queryClient.invalidateQueries({ queryKey: ['balance-report'] });
+    },
+  });
+}
+
+export function useExchanges() {
+  return useQuery({ queryKey: ['exchanges'], queryFn: api.exchanges });
+}
+
+export function useCreateExchange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.createExchange,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['exchanges'] });
+      await queryClient.invalidateQueries({ queryKey: ['balance-report'] });
+      await queryClient.invalidateQueries({ queryKey: ['point-balances'] });
+    },
+  });
+}
+
+export function useUpdateExchange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) => api.updateExchange(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['exchanges'] });
+      await queryClient.invalidateQueries({ queryKey: ['balance-report'] });
+      await queryClient.invalidateQueries({ queryKey: ['point-balances'] });
+    },
+  });
+}
+
+export function useDeleteExchange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteExchange,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['exchanges'] });
+      await queryClient.invalidateQueries({ queryKey: ['balance-report'] });
+      await queryClient.invalidateQueries({ queryKey: ['point-balances'] });
+    },
+  });
+}
+
+export function useDirectoryList(name: string, search: string) {
+  return useQuery({ queryKey: ['directory', name, search], queryFn: () => api.directoryList(name, search) });
+}
+
+export function useCreateDirectoryItem(name: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: unknown) => api.createDirectoryItem(name, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['directory', name] });
+      await queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+    },
+  });
+}
+
+export function useUpdateDirectoryItem(name: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) => api.updateDirectoryItem(name, id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['directory', name] });
+      await queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+    },
+  });
+}
+
+export function useDeleteDirectoryItem(name: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteDirectoryItem(name, id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['directory', name] });
+      await queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+    },
+  });
+}
+
 export function useOrders() {
   return useQuery({ queryKey: ['orders'], queryFn: api.orders });
 }

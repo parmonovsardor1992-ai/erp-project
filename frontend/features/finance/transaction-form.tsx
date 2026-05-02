@@ -4,7 +4,7 @@ import { FormEvent, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SelectField, TextField } from '@/components/ui/field';
-import { useCreateTransaction } from '@/lib/hooks';
+import { useCreateTransaction, useDictionaries } from '@/lib/hooks';
 import { ru, transactionTypeRu } from '@/lib/i18n';
 
 const initial = {
@@ -21,6 +21,8 @@ const initial = {
 export function TransactionForm() {
   const [form, setForm] = useState(initial);
   const mutation = useCreateTransaction();
+  const dictionaries = useDictionaries();
+  const dict = dictionaries.data;
 
   function setField(name: string, value: string) {
     setForm((current) => ({ ...current, [name]: value }));
@@ -47,9 +49,18 @@ export function TransactionForm() {
           <option value="EXPENSE">{transactionTypeRu.EXPENSE}</option>
           <option value="EXCHANGE">{transactionTypeRu.EXCHANGE}</option>
         </SelectField>
-        <TextField placeholder={ru.finance.cashAccountId} value={form.cashAccountId} onChange={(event) => setField('cashAccountId', event.target.value)} />
-        <TextField placeholder={ru.finance.counterpartyId} value={form.counterpartyId} onChange={(event) => setField('counterpartyId', event.target.value)} />
-        <TextField placeholder={ru.finance.categoryId} value={form.categoryId} onChange={(event) => setField('categoryId', event.target.value)} />
+        <SelectField value={form.cashAccountId} onChange={(event) => setField('cashAccountId', event.target.value)}>
+          <option value="">{ru.finance.cashAccountId}</option>
+          {(dict?.cashAccounts ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </SelectField>
+        <SelectField value={form.counterpartyId} onChange={(event) => setField('counterpartyId', event.target.value)}>
+          <option value="">{ru.finance.counterpartyId}</option>
+          {(dict?.counterparties ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </SelectField>
+        <SelectField value={form.categoryId} onChange={(event) => setField('categoryId', event.target.value)}>
+          <option value="">{ru.finance.categoryId}</option>
+          {(dict?.expenseCategories ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </SelectField>
         <TextField placeholder={ru.finance.description} value={form.description} onChange={(event) => setField('description', event.target.value)} />
         <div className="grid grid-cols-2 gap-2">
           <TextField type="number" min="0" step="0.01" value={form.amountUzs} onChange={(event) => setField('amountUzs', event.target.value)} />

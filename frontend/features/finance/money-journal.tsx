@@ -7,7 +7,7 @@ import { SelectField, TextField } from '@/components/ui/field';
 import { PageTitle } from '@/components/ui/page-title';
 import { money, shortDate } from '@/lib/format';
 import { cashAccountTypeRu, ru, transactionTypeRu } from '@/lib/i18n';
-import { useCreateTransaction, useDictionaries, useTransactions } from '@/lib/hooks';
+import { useCreateTransaction, useDeleteTransaction, useDictionaries, useTransactions, useUpdateTransaction } from '@/lib/hooks';
 import { CashAccountType, TransactionType } from '@/lib/types';
 
 type Props = { accountType: CashAccountType; title: string };
@@ -29,8 +29,11 @@ const initialForm = {
 export function MoneyJournal({ accountType, title }: Props) {
   const dictionaries = useDictionaries();
   const createTransaction = useCreateTransaction();
+  const updateTransaction = useUpdateTransaction();
+  const deleteTransaction = useDeleteTransaction();
   const [filters, setFilters] = useState({ from: '', to: '', type: 'ALL', movementTypeId: '', counterpartyId: '' });
   const [form, setForm] = useState(initialForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const params = useMemo(() => {
     const search = new URLSearchParams({ page: '1', limit: '100', accountType });
@@ -54,7 +57,6 @@ export function MoneyJournal({ accountType, title }: Props) {
   const expenseUsd = rows.filter((row) => row.type === 'EXPENSE').reduce((sum, row) => sum + Number(row.totalUsd), 0);
   const balanceUzs = rows.reduce((sum, row) => sum + Number(row.signedTotalUzs), 0);
   const balanceUsd = rows.reduce((sum, row) => sum + Number(row.signedTotalUsd), 0);
-  const lastRate = rows[0] ? Number(rows[0].rate) : Number(dict?.currencyRates?.[0]?.rateToUzs ?? 12600);
 
   function setFormField(name: string, value: string) {
     setForm((current) => ({ ...current, [name]: value }));
@@ -62,7 +64,7 @@ export function MoneyJournal({ accountType, title }: Props) {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    createTransaction.mutate({
+    const body = {
       ...form,
       cashAccountId: form.cashAccountId || accounts[0]?.id,
       movementTypeId: form.movementTypeId || undefined,
@@ -74,21 +76,47 @@ export function MoneyJournal({ accountType, title }: Props) {
       amountUsd: Number(form.amountUsd),
       description: form.comment,
       comment: form.comment,
+    };
+
+    if (editingId) {
+      updateTransaction.mutate({ id: editingId, body }, { onSuccess: resetForm });
+    } else {
+      createTransaction.mutate(body, { onSuccess: resetForm });
+    }
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setForm(initialForm);
+  }
+
+  function editTransaction(item: typeof rows[number]) {
+    setEditingId(item.id);
+    setForm({
+      date: item.date.slice(0, 10),
+      type: item.type,
+      movementTypeId: item.movementType?.id ?? '',
+      expenseArticleId: item.expenseArticle?.id ?? '',
+      counterpartyId: item.counterparty?.id ?? '',
+      orderId: item.order?.id ?? '',
+      orderStructure: item.orderStructure ?? item.order?.structure ?? '',
+      cashAccountId: item.cashAccount.id,
+      amountUzs: String(item.amountUzs),
+      amountUsd: String(item.amountUsd),
+      comment: item.comment ?? item.description ?? '',
     });
   }
 
   return (
     <>
       <PageTitle title={title} />
-      <div className="mb-3 grid gap-2 md:grid-cols-4 xl:grid-cols-8">
+      <div className="mb-3 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
         <Summary label="Приход UZS" value={money(incomeUzs)} />
         <Summary label="Расход UZS" value={money(expenseUzs)} />
         <Summary label="Остаток UZS" value={money(balanceUzs)} />
         <Summary label="Приход USD" value={money(incomeUsd, 'USD')} />
         <Summary label="Расход USD" value={money(expenseUsd, 'USD')} />
         <Summary label="Остаток USD" value={money(balanceUsd, 'USD')} />
-        <Summary label="Общий UZS" value={money(balanceUzs + balanceUsd * lastRate)} />
-        <Summary label="Общий USD" value={money(balanceUsd + balanceUzs / lastRate, 'USD')} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
@@ -97,10 +125,10 @@ export function MoneyJournal({ accountType, title }: Props) {
             <TextField type="date" value={filters.from} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} aria-label={ru.finance.fromDate} />
             <TextField type="date" value={filters.to} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} aria-label={ru.finance.toDate} />
             <SelectField value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value, movementTypeId: '' }))}>
-              <option value="ALL">{ru.finance.allOperations}</option>
-              <option value="INCOME">{transactionTypeRu.INCOME}</option>
-              <option value="EXPENSE">{transactionTypeRu.EXPENSE}</option>
-              <option value="EXCHANGE">{transactionTypeRu.EXCHANGE}</option>
+              <option value="ALL">Все операции</option>
+              <option value="INCOME">Приход</option>
+              <option value="EXPENSE">Расход</option>
+              <option value="EXCHANGE">Обмен</option>
             </SelectField>
             <SelectField value={filters.movementTypeId} onChange={(event) => setFilters((current) => ({ ...current, movementTypeId: event.target.value }))}>
               <option value="">Все типы движения</option>
@@ -115,40 +143,47 @@ export function MoneyJournal({ accountType, title }: Props) {
             <table className="erp-table">
               <thead className="sticky top-0 z-[1]">
                 <tr>
-                  <th>{ru.table.date}</th>
+                  <th>Дата</th>
                   <th>Платеж</th>
                   <th>Тип движения</th>
                   <th>Статья расхода</th>
-                  <th>{ru.table.counterparty}</th>
-                  <th>{ru.table.number}</th>
-                  <th>{ru.table.structure}</th>
+                  <th>Контрагент</th>
+                  <th>Заказ</th>
+                  <th>Структура заказа</th>
                   <th>Точка ДС</th>
                   <th>UZS</th>
                   <th>USD</th>
-                  <th>{ru.table.rate}</th>
-                  <th>{ru.table.totalUzs}</th>
+                  <th>Курс</th>
+                  <th>Итого UZS</th>
                   <th>Итого USD</th>
                   <th>Комментарий</th>
+                  <th>Действия</th>
                 </tr>
               </thead>
               <tbody>
-                {transactions.isLoading && <tr><td colSpan={14}>{ru.common.loading}</td></tr>}
+                {transactions.isLoading && <tr><td colSpan={15}>Загрузка...</td></tr>}
                 {rows.map((item) => (
                   <tr key={item.id}>
                     <td>{shortDate(item.date)}</td>
                     <td>{transactionTypeRu[item.type]}</td>
-                    <td>{item.movementType?.name ?? ru.common.notSpecified}</td>
-                    <td>{item.expenseArticle?.name ?? item.category?.name ?? ru.common.notSpecified}</td>
-                    <td>{item.counterparty?.name ?? ru.common.notSpecified}</td>
-                    <td>{item.order?.number ?? ru.common.notSpecified}</td>
-                    <td>{item.orderStructure ?? item.order?.structure ?? ru.common.notSpecified}</td>
+                    <td>{item.movementType?.name ?? '-'}</td>
+                    <td>{item.expenseArticle?.name ?? item.category?.name ?? '-'}</td>
+                    <td>{item.counterparty?.name ?? '-'}</td>
+                    <td>{item.order?.number ?? '-'}</td>
+                    <td>{item.orderStructure ?? item.order?.structure ?? '-'}</td>
                     <td>{cashAccountTypeRu[item.cashAccount.type]}</td>
                     <td className="text-right">{money(item.amountUzs)}</td>
                     <td className="text-right">{money(item.amountUsd, 'USD')}</td>
                     <td className="text-right">{Number(item.rate).toLocaleString('ru-RU')}</td>
                     <td className="text-right font-medium">{money(item.totalUzs)}</td>
                     <td className="text-right font-medium">{money(item.totalUsd, 'USD')}</td>
-                    <td>{item.comment ?? item.description ?? ru.common.notSpecified}</td>
+                    <td>{item.comment ?? item.description ?? '-'}</td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button className="text-[var(--accent-text)]" type="button" onClick={() => editTransaction(item)}>Редактировать</button>
+                        <button className="text-danger" type="button" onClick={() => window.confirm('Удалить операцию?') && deleteTransaction.mutate(item.id)}>Удалить</button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -157,13 +192,15 @@ export function MoneyJournal({ accountType, title }: Props) {
         </section>
 
         <form onSubmit={submit} className="rounded border border-line bg-white">
-          <div className="border-b border-line bg-panel px-3 py-2 text-sm font-semibold">{ru.finance.addTransaction}</div>
+          <div className="border-b border-line bg-panel px-3 py-2 text-sm font-semibold">
+            {editingId ? 'Редактировать операцию' : 'Добавить операцию'}
+          </div>
           <div className="grid gap-3 p-3">
             <TextField type="date" value={form.date} onChange={(event) => setFormField('date', event.target.value)} />
             <SelectField value={form.type} onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as TransactionType, movementTypeId: '' }))}>
-              <option value="INCOME">{transactionTypeRu.INCOME}</option>
-              <option value="EXPENSE">{transactionTypeRu.EXPENSE}</option>
-              <option value="EXCHANGE">{transactionTypeRu.EXCHANGE}</option>
+              <option value="INCOME">Приход</option>
+              <option value="EXPENSE">Расход</option>
+              <option value="EXCHANGE">Обмен</option>
             </SelectField>
             <SelectField value={form.movementTypeId} onChange={(event) => setFormField('movementTypeId', event.target.value)}>
               <option value="">Тип движения</option>
@@ -193,10 +230,11 @@ export function MoneyJournal({ accountType, title }: Props) {
               <TextField type="number" min="0" step="0.01" value={form.amountUsd} onChange={(event) => setFormField('amountUsd', event.target.value)} placeholder="Сумма USD" />
             </div>
             <TextField placeholder="Комментарий" value={form.comment} onChange={(event) => setFormField('comment', event.target.value)} />
-            <Button disabled={createTransaction.isPending || accounts.length === 0} type="submit">
+            <Button disabled={createTransaction.isPending || updateTransaction.isPending || accounts.length === 0} type="submit">
               <Plus size={16} />
-              {ru.finance.save}
+              {editingId ? 'Сохранить' : 'Добавить'}
             </Button>
+            {editingId && <button className="h-9 rounded border border-line" type="button" onClick={resetForm}>Отмена</button>}
           </div>
         </form>
       </div>

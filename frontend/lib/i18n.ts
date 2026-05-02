@@ -9,6 +9,7 @@ export const ru = {
     cash: 'Касса',
     bank: 'Банк',
     card: 'Карта',
+    exchanges: 'Обмен валют',
     orders: 'Заказы',
     salary: 'ЗП сотрудников',
     salaryAccruals: 'Начисление ЗП',
@@ -20,16 +21,23 @@ export const ru = {
   common: {
     loading: 'Загрузка...',
     notSpecified: '-',
+    edit: 'Редактировать',
+    delete: 'Удалить',
+    cancel: 'Отмена',
+    save: 'Сохранить',
+    add: 'Добавить',
+    actions: 'Действия',
   },
   finance: {
     allOperations: 'Все операции',
     addTransaction: 'Добавить операцию',
+    editTransaction: 'Редактировать операцию',
     journal: 'Журнал ДС',
     fromDate: 'Дата с',
     toDate: 'Дата по',
-    cashAccountId: 'ID счета',
-    counterpartyId: 'ID контрагента',
-    categoryId: 'ID категории',
+    cashAccountId: 'Счет',
+    counterpartyId: 'Контрагент',
+    categoryId: 'Категория',
     description: 'Описание',
     add: 'Добавить',
     save: 'Сохранить',
@@ -43,6 +51,7 @@ export const ru = {
     description: 'Описание',
     rate: 'Курс',
     totalUzs: 'Итого UZS',
+    totalUsd: 'Итого USD',
     number: 'Номер',
     customer: 'Клиент',
     structure: 'Структура',
@@ -64,7 +73,7 @@ export const ru = {
 };
 
 export const transactionTypeRu: Record<TransactionType, string> = {
-  INCOME: 'Доход',
+  INCOME: 'Приход',
   EXPENSE: 'Расход',
   EXCHANGE: 'Обмен',
 };
@@ -76,7 +85,7 @@ export const cashAccountTypeRu: Record<CashAccountType, string> = {
 };
 
 export const counterpartyTypeRu: Record<CounterpartyType, string> = {
-  CUSTOMER: 'Клиент',
+  CUSTOMER: 'Покупатель',
   SUPPLIER: 'Поставщик',
   EMPLOYEE: 'Сотрудник',
 };
