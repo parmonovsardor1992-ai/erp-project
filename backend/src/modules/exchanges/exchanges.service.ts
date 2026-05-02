@@ -39,23 +39,46 @@ export class ExchangesService {
   }
 
   private async persist(dto: CreateExchangeDto, id?: string) {
+    if (!dto.fromAccountId) {
+      throw new BadRequestException('Счет списания не найден');
+    }
+    if (!dto.toAccountId) {
+      throw new BadRequestException('Счет зачисления не найден');
+    }
     if (dto.currencyFrom === dto.currencyTo) {
-      throw new BadRequestException('Валюты обмена должны отличаться.');
+      throw new BadRequestException('Валюты обмена должны отличаться');
     }
 
-    const date = new Date(dto.date);
+    const [fromAccount, toAccount] = await Promise.all([
+      this.prisma.cashAccount.findUnique({ where: { id: dto.fromAccountId } }),
+      this.prisma.cashAccount.findUnique({ where: { id: dto.toAccountId } }),
+    ]);
+
+    if (!fromAccount) {
+      throw new BadRequestException('Счет списания не найден');
+    }
+    if (!toAccount) {
+      throw new BadRequestException('Счет зачисления не найден');
+    }
+
+    const date = this.normalizeDate(dto.date);
     const rate = await this.ratesService.getRateByDate(CurrencyCode.USD, date);
+    if (!rate || rate.lte(0)) {
+      throw new BadRequestException('Курс валюты на выбранную дату не найден');
+    }
+
     const amountFrom = new Prisma.Decimal(dto.amountFrom);
     if (amountFrom.lte(0)) {
-      throw new BadRequestException('Сумма обмена должна быть больше нуля.');
+      throw new BadRequestException('Сумма обмена должна быть больше нуля');
     }
 
-    const amountTo = dto.currencyFrom === CurrencyCode.UZS ? amountFrom.div(rate) : amountFrom.mul(rate);
+    const expectedAmountTo = dto.currencyFrom === CurrencyCode.UZS ? amountFrom.div(rate) : amountFrom.mul(rate);
 
     if (dto.amountTo !== undefined) {
       const enteredAmountTo = new Prisma.Decimal(dto.amountTo);
-      if (enteredAmountTo.minus(amountTo).abs().gt(new Prisma.Decimal(0.01))) {
-        throw new BadRequestException('Сумма получения не совпадает с расчетом по курсу.');
+      const allowedDiff = expectedAmountTo.abs().mul(0.01);
+      if (enteredAmountTo.minus(expectedAmountTo).abs().gt(allowedDiff)) {
+        throw new BadRequestException('Сумма обмена не соответствует курсу');
       }
     }
 
@@ -66,7 +89,7 @@ export class ExchangesService {
       currencyFrom: dto.currencyFrom,
       currencyTo: dto.currencyTo,
       amountFrom,
-      amountTo,
+      amountTo: expectedAmountTo,
       rate,
       comment: dto.comment,
     };
@@ -83,5 +106,10 @@ export class ExchangesService {
       data,
       include: { fromAccount: true, toAccount: true },
     });
+  }
+
+  private normalizeDate(value: string) {
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+    return new Date(year, month - 1, day);
   }
 }

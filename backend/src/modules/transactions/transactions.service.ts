@@ -71,6 +71,10 @@ export class TransactionsService {
   }
 
   private async persist(dto: TransactionPersistInput, id?: string) {
+    if (dto.type === TransactionType.EXCHANGE) {
+      throw new BadRequestException('Обмен валют нужно оформлять в разделе Обмен валют');
+    }
+
     const allowedTypes: TransactionType[] = [TransactionType.INCOME, TransactionType.EXPENSE];
     if (!allowedTypes.includes(dto.type)) {
       throw new BadRequestException('Недопустимый тип операции');
