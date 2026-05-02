@@ -75,6 +75,7 @@ export type Order = {
   amountUsd: string;
   paidAmount?: number;
   orderDebt?: number;
+  overpaymentAmount?: number;
   counterparty: Counterparty;
 };
 

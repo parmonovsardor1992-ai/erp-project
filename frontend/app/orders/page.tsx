@@ -126,6 +126,7 @@ export default function OrdersPage() {
               )}
               {(data ?? []).map((order) => {
                 const debt = Number(order.orderDebt ?? 0);
+                const overpayment = Number(order.overpaymentAmount ?? 0);
                 return (
                   <tr key={order.id}>
                     <td>{order.number}</td>
@@ -140,7 +141,7 @@ export default function OrdersPage() {
                     <td className="text-right">{money(order.structureAmount, order.currencyCode)}</td>
                     <td className="text-right">{money(Number(order.paidAmount ?? 0), order.currencyCode)}</td>
                     <td className="text-right font-medium">
-                      {debt < 0 ? `Переплата ${money(Math.abs(debt), order.currencyCode)}` : money(debt, order.currencyCode)}
+                      {overpayment > 0 ? `Переплата ${money(overpayment, order.currencyCode)}` : money(debt, order.currencyCode)}
                     </td>
                     <td>
                       <div className="flex gap-2">

@@ -58,17 +58,17 @@ export class DirectoriesService {
 
   async create(name: DirectoryName, body: Record<string, unknown>) {
     const data = await this.normalizeData(name, body);
-    return this.getModel(name).create({ data });
+    return this.getModel(name).create({ data: { ...data, createdBy: 'system' } });
   }
 
   async update(name: DirectoryName, id: string, body: Record<string, unknown>) {
     const data = await this.normalizeData(name, body);
-    return this.getModel(name).update({ where: { id }, data });
+    return this.getModel(name).update({ where: { id }, data: { ...data, updatedBy: 'system' } });
   }
 
   async remove(name: DirectoryName, id: string) {
     await this.assertNotUsed(name, id);
-    return this.getModel(name).delete({ where: { id } });
+    return this.getModel(name).update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
   }
 
   private getModel(name: DirectoryName): PrismaModel {
@@ -79,7 +79,7 @@ export class DirectoriesService {
   }
 
   private baseWhere(name: DirectoryName, search?: string) {
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { deletedAt: null };
     if (name === 'customers') where.type = 'CUSTOMER';
     if (name === 'suppliers') where.type = 'SUPPLIER';
     if (name === 'employees') where.type = 'EMPLOYEE';

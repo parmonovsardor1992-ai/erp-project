@@ -14,22 +14,22 @@ export class OtherCounterpartiesService {
     const date = { gte: from ? new Date(from) : undefined, lte: to ? new Date(to) : undefined };
     const rate = await this.ratesService.getRateByDate(CurrencyCode.USD, new Date());
     const counterparties = await this.prisma.counterparty.findMany({
-      where: { id: counterpartyId, type: { in: ['SUPPLIER', 'CUSTOMER'] } },
+      where: { id: counterpartyId, type: { in: ['SUPPLIER', 'CUSTOMER'] }, deletedAt: null },
       orderBy: { name: 'asc' },
     });
 
     return Promise.all(counterparties.map(async (counterparty) => {
       const [utility, expense, paid] = await Promise.all([
         this.prisma.utilityAccrual.aggregate({
-          where: { counterpartyId: counterparty.id, currencyCode: currency, date },
+          where: { counterpartyId: counterparty.id, currencyCode: currency, date, deletedAt: null },
           _sum: { amountUzs: true, amountUsd: true },
         }),
         this.prisma.expenseAccrual.aggregate({
-          where: { counterpartyId: counterparty.id, date },
+          where: { counterpartyId: counterparty.id, date, deletedAt: null },
           _sum: { accruedUzs: true, paidUzs: true },
         }),
         this.prisma.transaction.aggregate({
-          where: { counterpartyId: counterparty.id, type: TransactionType.EXPENSE, date },
+          where: { counterpartyId: counterparty.id, type: TransactionType.EXPENSE, date, deletedAt: null },
           _sum: { totalUzs: true, totalUsd: true },
         }),
       ]);

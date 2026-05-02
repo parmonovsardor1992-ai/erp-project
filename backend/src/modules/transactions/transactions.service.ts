@@ -43,7 +43,7 @@ export class TransactionsService {
   }
 
   async update(id: string, dto: UpdateTransactionDto) {
-    const current = await this.prisma.transaction.findUnique({ where: { id } });
+    const current = await this.prisma.transaction.findFirst({ where: { id, deletedAt: null } });
     if (!current) {
       throw new NotFoundException('Операция не найдена');
     }
@@ -97,41 +97,53 @@ export class TransactionsService {
       throw new BadRequestException('Нельзя сохранить операцию с нулевой суммой');
     }
 
-    await this.validateReferences(dto);
+    return this.prisma.$transaction(async (tx) => {
+      await this.assertPeriodOpen(date, tx);
+      await this.validateReferences(dto, tx);
 
-    const totalUzs = amountUzs.plus(amountUsd.mul(rate));
-    const totalUsd = amountUsd.plus(amountUzs.div(rate));
-    const sign = dto.type === TransactionType.INCOME ? 1 : -1;
-    const signedTotalUzs = totalUzs.mul(sign);
-    const signedTotalUsd = totalUsd.mul(sign);
+      const totalUzs = amountUzs.plus(amountUsd.mul(rate));
+      const totalUsd = amountUsd.plus(amountUzs.div(rate));
+      const sign = dto.type === TransactionType.INCOME ? 1 : -1;
+      const signedTotalUzs = totalUzs.mul(sign);
+      const signedTotalUsd = totalUsd.mul(sign);
 
-    const data: Prisma.TransactionUncheckedCreateInput = {
-      date,
-      type: dto.type,
-      movementTypeId: dto.movementTypeId,
-      cashAccountId: dto.cashAccountId,
-      exchangeAccountId: dto.exchangeAccountId,
-      categoryId: dto.categoryId,
-      expenseArticleId: dto.expenseArticleId,
-      counterpartyId: dto.counterpartyId,
-      orderId: dto.orderId,
-      orderStructure: dto.orderStructure,
-      description: dto.description,
-      amountUzs,
-      amountUsd,
-      rate,
-      totalUzs,
-      totalUsd,
-      signedTotalUzs,
-      signedTotalUsd,
-      comment: dto.comment,
-    };
+      const data: Prisma.TransactionUncheckedCreateInput = {
+        date,
+        type: dto.type,
+        movementTypeId: dto.movementTypeId,
+        cashAccountId: dto.cashAccountId,
+        exchangeAccountId: dto.exchangeAccountId,
+        categoryId: dto.categoryId,
+        expenseArticleId: dto.expenseArticleId,
+        counterpartyId: dto.counterpartyId,
+        orderId: dto.orderId,
+        orderStructure: dto.orderStructure,
+        description: dto.description,
+        amountUzs,
+        amountUsd,
+        rate,
+        totalUzs,
+        totalUsd,
+        signedTotalUzs,
+        signedTotalUsd,
+        comment: dto.comment,
+        createdBy: id ? undefined : 'system',
+        updatedBy: id ? 'system' : undefined,
+      };
 
-    if (id) {
-      return this.transactionsRepository.update(id, data);
-    }
+      if (id) {
+        return tx.transaction.update({
+          where: { id },
+          data,
+          include: { cashAccount: true, category: true, expenseArticle: true, counterparty: true, movementType: true, order: true },
+        });
+      }
 
-    return this.transactionsRepository.create(data);
+      return tx.transaction.create({
+        data,
+        include: { cashAccount: true, category: true, expenseArticle: true, counterparty: true, movementType: true, order: true },
+      });
+    });
   }
 
   private normalizeDate(value: string | Date) {
@@ -155,14 +167,14 @@ export class TransactionsService {
     return new Prisma.Decimal(value);
   }
 
-  private async validateReferences(dto: TransactionPersistInput) {
-    const cashAccount = await this.prisma.cashAccount.findUnique({ where: { id: dto.cashAccountId } });
+  private async validateReferences(dto: TransactionPersistInput, tx: Prisma.TransactionClient) {
+    const cashAccount = await tx.cashAccount.findFirst({ where: { id: dto.cashAccountId, deletedAt: null } });
     if (!cashAccount) {
       throw new BadRequestException('Счет не найден');
     }
 
     if (dto.movementTypeId) {
-      const movementType = await this.prisma.movementType.findUnique({ where: { id: dto.movementTypeId } });
+      const movementType = await tx.movementType.findFirst({ where: { id: dto.movementTypeId, deletedAt: null } });
       if (!movementType) {
         throw new BadRequestException('Тип движения не найден');
       }
@@ -172,17 +184,32 @@ export class TransactionsService {
     }
 
     if (dto.counterpartyId) {
-      const counterparty = await this.prisma.counterparty.findUnique({ where: { id: dto.counterpartyId } });
+      const counterparty = await tx.counterparty.findFirst({ where: { id: dto.counterpartyId, deletedAt: null } });
       if (!counterparty) {
         throw new BadRequestException('Контрагент не найден');
       }
     }
 
     if (dto.orderId) {
-      const order = await this.prisma.order.findUnique({ where: { id: dto.orderId } });
+      const order = await tx.order.findFirst({ where: { id: dto.orderId, deletedAt: null } });
       if (!order) {
         throw new BadRequestException('Заказ не найден');
       }
+    }
+  }
+
+  private async assertPeriodOpen(date: Date, tx: Prisma.TransactionClient) {
+    const locked = await tx.periodLock.findFirst({
+      where: {
+        isClosed: true,
+        deletedAt: null,
+        dateFrom: { lte: date },
+        dateTo: { gte: date },
+      },
+    });
+
+    if (locked) {
+      throw new BadRequestException('Период закрыт. Редактирование запрещено.');
     }
   }
 }

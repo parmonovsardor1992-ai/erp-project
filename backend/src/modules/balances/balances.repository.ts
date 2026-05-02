@@ -7,7 +7,7 @@ export class BalancesRepository {
 
   activeAccounts() {
     return this.prisma.cashAccount.findMany({
-      where: { isActive: true },
+      where: { isActive: true, deletedAt: null },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
     });
   }
@@ -15,6 +15,7 @@ export class BalancesRepository {
   groupedTransactionSums() {
     return this.prisma.transaction.groupBy({
       by: ['cashAccountId'],
+      where: { deletedAt: null },
       _sum: { signedTotalUzs: true, signedTotalUsd: true },
     });
   }
@@ -22,7 +23,7 @@ export class BalancesRepository {
   incomeVsExpense() {
     return this.prisma.transaction.groupBy({
       by: ['type'],
-      where: { type: { in: ['INCOME', 'EXPENSE'] } },
+      where: { type: { in: ['INCOME', 'EXPENSE'] }, deletedAt: null },
       _sum: { totalUzs: true, totalUsd: true },
     });
   }

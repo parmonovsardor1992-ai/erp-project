@@ -18,7 +18,7 @@ export class SalaryService {
     end.setMonth(end.getMonth() + 1);
 
     const employees = await this.prisma.employee.findMany({
-      where: employeeId ? { id: employeeId } : undefined,
+      where: { ...(employeeId ? { id: employeeId } : {}), deletedAt: null },
       include: { counterparty: true, department: true },
       orderBy: { counterparty: { name: 'asc' } },
     });
@@ -26,13 +26,14 @@ export class SalaryService {
     return Promise.all(employees.map(async (employee) => {
       const [accrued, paid] = await Promise.all([
         this.prisma.salaryAccrual.aggregate({
-          where: { employeeId: employee.id, date: { gte: start, lt: end } },
+          where: { employeeId: employee.id, date: { gte: start, lt: end }, deletedAt: null },
           _sum: { amountUzs: true },
         }),
         this.prisma.transaction.aggregate({
           where: {
             counterpartyId: employee.counterpartyId,
             type: TransactionType.EXPENSE,
+            deletedAt: null,
             date: { gte: start, lt: end },
             movementType: { name: { in: ['Сотрудники', 'Зарплата'] } },
           },

@@ -52,7 +52,7 @@ export class BalancesService {
     }
 
     const accounts = await this.prisma.cashAccount.findMany({
-      where: { isActive: true, type: accountType },
+      where: { isActive: true, type: accountType, deletedAt: null },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
     });
 
@@ -66,18 +66,18 @@ export class BalancesService {
         const opening = await this.calculateOpening(account.id, fromDate, toDate ?? reportRateDate);
         const [income, expense, exchangeIn, exchangeOut] = await Promise.all([
           this.prisma.transaction.aggregate({
-            where: { cashAccountId: account.id, type: TransactionType.INCOME, date: periodDateFilter },
+            where: { cashAccountId: account.id, type: TransactionType.INCOME, date: periodDateFilter, deletedAt: null },
             _sum: { totalUzs: true, totalUsd: true },
           }),
           this.prisma.transaction.aggregate({
-            where: { cashAccountId: account.id, type: TransactionType.EXPENSE, date: periodDateFilter },
+            where: { cashAccountId: account.id, type: TransactionType.EXPENSE, date: periodDateFilter, deletedAt: null },
             _sum: { totalUzs: true, totalUsd: true },
           }),
           this.prisma.exchangeTransaction.findMany({
-            where: { toAccountId: account.id, date: periodDateFilter },
+            where: { toAccountId: account.id, date: periodDateFilter, deletedAt: null },
           }),
           this.prisma.exchangeTransaction.findMany({
-            where: { fromAccountId: account.id, date: periodDateFilter },
+            where: { fromAccountId: account.id, date: periodDateFilter, deletedAt: null },
           }),
         ]);
 
@@ -126,6 +126,7 @@ export class BalancesService {
     const opening = await this.prisma.openingBalance.findFirst({
       where: {
         cashAccountId: accountId,
+        deletedAt: null,
         date: { lte: fromDate ?? reportDate },
       },
       orderBy: { date: 'desc' },
@@ -145,6 +146,7 @@ export class BalancesService {
       this.prisma.transaction.aggregate({
         where: {
           cashAccountId: accountId,
+          deletedAt: null,
           date: afterOpeningDate,
         },
         _sum: { signedTotalUzs: true, signedTotalUsd: true },
@@ -152,12 +154,14 @@ export class BalancesService {
       this.prisma.exchangeTransaction.findMany({
         where: {
           toAccountId: accountId,
+          deletedAt: null,
           date: afterOpeningDate,
         },
       }),
       this.prisma.exchangeTransaction.findMany({
         where: {
           fromAccountId: accountId,
+          deletedAt: null,
           date: afterOpeningDate,
         },
       }),

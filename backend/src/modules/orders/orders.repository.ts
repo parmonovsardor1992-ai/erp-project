@@ -10,6 +10,7 @@ export class OrdersRepository {
     return this.prisma.order.findMany({
       where: {
         ...(validOnly ? { structure: { not: null } } : {}),
+        deletedAt: null,
         counterpartyId: filters?.customerId,
         startDate: {
           gte: filters?.dateFrom ? new Date(filters.dateFrom) : undefined,
@@ -17,13 +18,16 @@ export class OrdersRepository {
         },
         name: filters?.search ? { contains: filters.search, mode: 'insensitive' } : undefined,
       },
-      include: { counterparty: true, transactions: true },
+      include: { counterparty: true, transactions: { where: { deletedAt: null } } },
       orderBy: { startDate: 'asc' },
     });
   }
 
   findById(id: string) {
-    return this.prisma.order.findUniqueOrThrow({ where: { id }, include: { counterparty: true, transactions: true } });
+    return this.prisma.order.findFirstOrThrow({
+      where: { id, deletedAt: null },
+      include: { counterparty: true, transactions: { where: { deletedAt: null } } },
+    });
   }
 
   create(data: Prisma.OrderUncheckedCreateInput) {
@@ -35,6 +39,6 @@ export class OrdersRepository {
   }
 
   remove(id: string) {
-    return this.prisma.order.delete({ where: { id } });
+    return this.prisma.order.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
   }
 }

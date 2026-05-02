@@ -8,7 +8,7 @@ export class TransactionsRepository {
 
   findMany(where: Prisma.TransactionWhereInput, skip: number, take: number) {
     return this.prisma.transaction.findMany({
-      where,
+      where: { ...where, deletedAt: null },
       include: { cashAccount: true, category: true, expenseArticle: true, counterparty: true, movementType: true, order: true },
       orderBy: { date: 'desc' },
       skip,
@@ -17,11 +17,11 @@ export class TransactionsRepository {
   }
 
   count(where: Prisma.TransactionWhereInput) {
-    return this.prisma.transaction.count({ where });
+    return this.prisma.transaction.count({ where: { ...where, deletedAt: null } });
   }
 
   findById(id: string) {
-    return this.prisma.transaction.findUniqueOrThrow({ where: { id } });
+    return this.prisma.transaction.findFirstOrThrow({ where: { id, deletedAt: null } });
   }
 
   create(data: Prisma.TransactionUncheckedCreateInput) {
@@ -33,6 +33,6 @@ export class TransactionsRepository {
   }
 
   remove(id: string) {
-    return this.prisma.transaction.delete({ where: { id } });
+    return this.prisma.transaction.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
   }
 }

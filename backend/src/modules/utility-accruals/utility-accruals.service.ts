@@ -13,14 +13,15 @@ export class UtilityAccrualsService {
 
   findAll() {
     return this.prisma.utilityAccrual.findMany({
+      where: { deletedAt: null },
       include: { counterparty: true, category: true, expenseArticle: true },
       orderBy: { date: 'desc' },
     });
   }
 
   findOne(id: string) {
-    return this.prisma.utilityAccrual.findUniqueOrThrow({
-      where: { id },
+    return this.prisma.utilityAccrual.findFirstOrThrow({
+      where: { id, deletedAt: null },
       include: { counterparty: true, category: true, expenseArticle: true },
     });
   }
@@ -44,13 +45,14 @@ export class UtilityAccrualsService {
         amountUzs,
         amountUsd,
         comment: dto.comment,
+        createdBy: 'system',
       },
       include: { counterparty: true, category: true, expenseArticle: true },
     });
   }
 
   remove(id: string) {
-    return this.prisma.utilityAccrual.delete({ where: { id } });
+    return this.prisma.utilityAccrual.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
   }
 
   async update(id: string, dto: CreateUtilityAccrualDto) {

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { MockAuthGuard } from './common/guards/mock-auth.guard';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { BalancesModule } from './modules/balances/balances.module';
 import { CounterpartiesModule } from './modules/counterparties/counterparties.module';
@@ -33,5 +35,6 @@ import { UtilityAccrualsModule } from './modules/utility-accruals/utility-accrua
     OtherCounterpartiesModule,
     DashboardModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: MockAuthGuard }],
 })
 export class AppModule {}

@@ -27,24 +27,34 @@ export class OrdersService {
     const averageDays = Number(setting?.value ?? 40);
     const endDate = dto.endDate ? new Date(dto.endDate) : new Date(startDate.getTime() + averageDays * 24 * 60 * 60 * 1000);
 
-    return this.ordersRepository.create({
-      number: dto.number,
-      counterpartyId: dto.counterpartyId,
-      name: dto.name,
-      structure: dto.structure,
-      currencyCode: dto.currencyCode,
-      status: dto.status,
-      startDate,
-      endDate,
-      amountUzs: dto.amountUzs,
-      amountUsd: dto.amountUsd,
-      totalAmount: dto.totalAmount,
-      structureAmount: dto.structureAmount,
+    return this.prisma.$transaction((tx) => {
+      return tx.order.create({
+        data: {
+          number: dto.number,
+          counterpartyId: dto.counterpartyId,
+          name: dto.name,
+          structure: dto.structure,
+          currencyCode: dto.currencyCode,
+          status: dto.status,
+          startDate,
+          endDate,
+          amountUzs: dto.amountUzs,
+          amountUsd: dto.amountUsd,
+          totalAmount: dto.totalAmount,
+          structureAmount: dto.structureAmount,
+          createdBy: 'system',
+        },
+      });
     });
   }
 
   update(id: string, dto: UpdateOrderDto) {
-    return this.ordersRepository.update(id, this.toUpdateData(dto));
+    return this.prisma.$transaction((tx) => {
+      return tx.order.update({
+        where: { id },
+        data: { ...this.toUpdateData(dto), updatedBy: 'system' },
+      });
+    });
   }
 
   remove(id: string) {
@@ -73,12 +83,15 @@ export class OrdersService {
     const paidUzs = incomeTransactions.reduce((sum, row) => sum + row.totalUzs.toNumber(), 0);
     const paidUsd = incomeTransactions.reduce((sum, row) => sum + row.totalUsd.toNumber(), 0);
     const paidAmount = order.currencyCode === 'USD' ? paidUsd : paidUzs;
-    const orderDebt = order.structureAmount.toNumber() - paidAmount;
+    const rawDebt = order.structureAmount.toNumber() - paidAmount;
+    const orderDebt = Math.max(rawDebt, 0);
+    const overpaymentAmount = rawDebt < 0 ? Math.abs(rawDebt) : 0;
 
     return {
       ...order,
       paidAmount,
       orderDebt,
+      overpaymentAmount,
     };
   }
 }

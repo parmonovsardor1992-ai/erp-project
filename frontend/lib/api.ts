@@ -12,7 +12,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(await response.text());
+    const text = await response.text();
+    let message = text || 'Ошибка запроса к серверу';
+    try {
+      const parsed = JSON.parse(text) as { message?: string | string[]; error?: string };
+      message = (Array.isArray(parsed.message) ? parsed.message.join('\n') : parsed.message) ?? parsed.error ?? message;
+    } catch {
+      // The backend may return plain text for older endpoints.
+    }
+    throw new Error(message);
   }
 
   return response.json() as Promise<T>;

@@ -13,14 +13,15 @@ export class SalaryAccrualsService {
 
   findAll() {
     return this.prisma.salaryAccrual.findMany({
+      where: { deletedAt: null },
       include: { employee: { include: { counterparty: true, department: true } }, counterparty: true, department: true },
       orderBy: { date: 'desc' },
     });
   }
 
   findOne(id: string) {
-    return this.prisma.salaryAccrual.findUniqueOrThrow({
-      where: { id },
+    return this.prisma.salaryAccrual.findFirstOrThrow({
+      where: { id, deletedAt: null },
       include: { employee: { include: { counterparty: true, department: true } }, counterparty: true, department: true },
     });
   }
@@ -50,17 +51,18 @@ export class SalaryAccrualsService {
         amountUzs,
         amountUsd,
         comment: dto.comment,
+        createdBy: 'system',
       },
       include: { employee: { include: { counterparty: true, department: true } }, counterparty: true, department: true },
     });
   }
 
   async update(id: string, dto: CreateSalaryAccrualDto) {
-    await this.prisma.salaryAccrual.delete({ where: { id } });
+    await this.prisma.salaryAccrual.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
     return this.create(dto);
   }
 
   remove(id: string) {
-    return this.prisma.salaryAccrual.delete({ where: { id } });
+    return this.prisma.salaryAccrual.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
   }
 }
