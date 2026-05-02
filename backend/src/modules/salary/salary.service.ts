@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateSalaryRecordDto } from './dto/create-salary-record.dto';
@@ -103,3 +103,4 @@ export class SalaryService {
     };
   }
 }
+

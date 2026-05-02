@@ -8,8 +8,14 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
-  findAll(@Query('validOnly') validOnly?: string) {
-    return this.ordersService.findAll(validOnly !== 'false');
+  findAll(
+    @Query('validOnly') validOnly?: string,
+    @Query('customerId') customerId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.ordersService.findAll(validOnly !== 'false', { customerId, dateFrom, dateTo, search });
   }
 
   @Get(':id')

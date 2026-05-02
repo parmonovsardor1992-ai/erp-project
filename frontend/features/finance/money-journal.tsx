@@ -128,7 +128,6 @@ export function MoneyJournal({ accountType, title }: Props) {
               <option value="ALL">Все операции</option>
               <option value="INCOME">Приход</option>
               <option value="EXPENSE">Расход</option>
-              <option value="EXCHANGE">Обмен</option>
             </SelectField>
             <SelectField value={filters.movementTypeId} onChange={(event) => setFilters((current) => ({ ...current, movementTypeId: event.target.value }))}>
               <option value="">Все типы движения</option>
@@ -200,7 +199,6 @@ export function MoneyJournal({ accountType, title }: Props) {
             <SelectField value={form.type} onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as TransactionType, movementTypeId: '' }))}>
               <option value="INCOME">Приход</option>
               <option value="EXPENSE">Расход</option>
-              <option value="EXCHANGE">Обмен</option>
             </SelectField>
             <SelectField value={form.movementTypeId} onChange={(event) => setFormField('movementTypeId', event.target.value)}>
               <option value="">Тип движения</option>

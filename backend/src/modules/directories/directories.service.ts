@@ -52,7 +52,7 @@ export class DirectoriesService {
 
   async findOne(name: DirectoryName, id: string) {
     const item = await this.getModel(name).findUnique({ where: { id } });
-    if (!item) throw new NotFoundException('Элемент справочника не найден');
+    if (!item) throw new NotFoundException('Элемент справочника не найден.');
     return item;
   }
 
@@ -74,7 +74,7 @@ export class DirectoriesService {
   private getModel(name: DirectoryName): PrismaModel {
     const modelName = directoryMap[name];
     const model = (this.prisma as unknown as Record<string, PrismaModel | undefined>)[modelName];
-    if (!model) throw new NotFoundException('Справочник не найден');
+    if (!model) throw new NotFoundException('Справочник не найден.');
     return model;
   }
 
@@ -125,7 +125,7 @@ export class DirectoriesService {
         this.prisma.utilityAccrual.count({ where: { counterpartyId: id } }),
         this.prisma.salaryAccrual.count({ where: { counterpartyId: id } }),
       ]);
-      if (transactions + orders + utility + salary > 0) throw new BadRequestException('Нельзя удалить: элемент используется в документах');
+      if (transactions + orders + utility + salary > 0) throw new BadRequestException('Нельзя удалить: элемент используется в документах.');
     }
     if (name === 'cash-accounts') {
       const [transactions, fromExchanges, toExchanges] = await Promise.all([
@@ -133,18 +133,18 @@ export class DirectoriesService {
         this.prisma.exchangeTransaction.count({ where: { fromAccountId: id } }),
         this.prisma.exchangeTransaction.count({ where: { toAccountId: id } }),
       ]);
-      if (transactions + fromExchanges + toExchanges > 0) throw new BadRequestException('Нельзя удалить: счет используется в операциях');
+      if (transactions + fromExchanges + toExchanges > 0) throw new BadRequestException('Нельзя удалить: счет используется в операциях.');
     }
     if (name === 'movement-types') {
       const count = await this.prisma.transaction.count({ where: { movementTypeId: id } });
-      if (count > 0) throw new BadRequestException('Нельзя удалить: тип движения используется в операциях');
+      if (count > 0) throw new BadRequestException('Нельзя удалить: тип движения используется в операциях.');
     }
     if (name === 'expense-articles') {
       const [transactions, utilities] = await Promise.all([
         this.prisma.transaction.count({ where: { expenseArticleId: id } }),
         this.prisma.utilityAccrual.count({ where: { expenseArticleId: id } }),
       ]);
-      if (transactions + utilities > 0) throw new BadRequestException('Нельзя удалить: статья используется в документах');
+      if (transactions + utilities > 0) throw new BadRequestException('Нельзя удалить: статья используется в документах.');
     }
   }
 }

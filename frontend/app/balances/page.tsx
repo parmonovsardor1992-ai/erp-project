@@ -6,7 +6,7 @@ import { SelectField, TextField } from '@/components/ui/field';
 import { money } from '@/lib/format';
 import { cashAccountTypeRu, ru } from '@/lib/i18n';
 import { useBalanceReport } from '@/lib/hooks';
-import { CashAccountType } from '@/lib/types';
+import { BalanceReportRow, CashAccountType } from '@/lib/types';
 
 export default function BalancesPage() {
   const [filters, setFilters] = useState({ from: '', to: '', accountType: '' });
@@ -18,6 +18,7 @@ export default function BalancesPage() {
     return search.size ? `?${search.toString()}` : '';
   }, [filters]);
   const { data, isLoading } = useBalanceReport(params);
+  const totals = (data ?? []).reduce((acc, row) => addTotals(acc, row), emptyTotals());
 
   return (
     <>
@@ -56,27 +57,78 @@ export default function BalancesPage() {
           <tbody>
             {isLoading && <tr><td colSpan={15}>{ru.common.loading}</td></tr>}
             {(data ?? []).map((row) => (
-              <tr key={row.account.id}>
-                <td>{cashAccountTypeRu[row.account.type as CashAccountType]}</td>
-                <td className="text-right">{money(row.openingBalanceUzs)}</td>
-                <td className="text-right">{money(row.incomeUzs)}</td>
-                <td className="text-right">{money(row.expenseUzs)}</td>
-                <td className="text-right">{money(row.exchangeInUzs)}</td>
-                <td className="text-right">{money(row.exchangeOutUzs)}</td>
-                <td className="text-right font-medium">{money(row.closingBalanceUzs)}</td>
-                <td className="text-right">{money(row.openingBalanceUsd, 'USD')}</td>
-                <td className="text-right">{money(row.incomeUsd, 'USD')}</td>
-                <td className="text-right">{money(row.expenseUsd, 'USD')}</td>
-                <td className="text-right">{money(row.exchangeInUsd, 'USD')}</td>
-                <td className="text-right">{money(row.exchangeOutUsd, 'USD')}</td>
-                <td className="text-right font-medium">{money(row.closingBalanceUsd, 'USD')}</td>
-                <td className="text-right font-medium">{money(row.totalInUzs)}</td>
-                <td className="text-right font-medium">{money(row.totalInUsd, 'USD')}</td>
-              </tr>
+              <BalanceRow key={row.account.id} row={row} />
             ))}
+            {!isLoading && (
+              <tr className="bg-panel font-semibold">
+                <td>Итого</td>
+                <td className="text-right">{money(totals.openingBalanceUzs)}</td>
+                <td className="text-right">{money(totals.incomeUzs)}</td>
+                <td className="text-right">{money(totals.expenseUzs)}</td>
+                <td className="text-right">{money(totals.exchangeInUzs)}</td>
+                <td className="text-right">{money(totals.exchangeOutUzs)}</td>
+                <td className="text-right">{money(totals.closingBalanceUzs)}</td>
+                <td className="text-right">{money(totals.openingBalanceUsd, 'USD')}</td>
+                <td className="text-right">{money(totals.incomeUsd, 'USD')}</td>
+                <td className="text-right">{money(totals.expenseUsd, 'USD')}</td>
+                <td className="text-right">{money(totals.exchangeInUsd, 'USD')}</td>
+                <td className="text-right">{money(totals.exchangeOutUsd, 'USD')}</td>
+                <td className="text-right">{money(totals.closingBalanceUsd, 'USD')}</td>
+                <td className="text-right">{money(totals.totalInUzs)}</td>
+                <td className="text-right">{money(totals.totalInUsd, 'USD')}</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </section>
     </>
   );
+}
+
+function BalanceRow({ row }: { row: BalanceReportRow }) {
+  return (
+    <tr>
+      <td>{cashAccountTypeRu[row.account.type as CashAccountType]}</td>
+      <td className="text-right">{money(row.openingBalanceUzs)}</td>
+      <td className="text-right">{money(row.incomeUzs)}</td>
+      <td className="text-right">{money(row.expenseUzs)}</td>
+      <td className="text-right">{money(row.exchangeInUzs)}</td>
+      <td className="text-right">{money(row.exchangeOutUzs)}</td>
+      <td className="text-right font-medium">{money(row.closingBalanceUzs)}</td>
+      <td className="text-right">{money(row.openingBalanceUsd, 'USD')}</td>
+      <td className="text-right">{money(row.incomeUsd, 'USD')}</td>
+      <td className="text-right">{money(row.expenseUsd, 'USD')}</td>
+      <td className="text-right">{money(row.exchangeInUsd, 'USD')}</td>
+      <td className="text-right">{money(row.exchangeOutUsd, 'USD')}</td>
+      <td className="text-right font-medium">{money(row.closingBalanceUsd, 'USD')}</td>
+      <td className="text-right font-medium">{money(row.totalInUzs)}</td>
+      <td className="text-right font-medium">{money(row.totalInUsd, 'USD')}</td>
+    </tr>
+  );
+}
+
+function emptyTotals() {
+  return {
+    openingBalanceUzs: 0,
+    incomeUzs: 0,
+    expenseUzs: 0,
+    exchangeInUzs: 0,
+    exchangeOutUzs: 0,
+    closingBalanceUzs: 0,
+    openingBalanceUsd: 0,
+    incomeUsd: 0,
+    expenseUsd: 0,
+    exchangeInUsd: 0,
+    exchangeOutUsd: 0,
+    closingBalanceUsd: 0,
+    totalInUzs: 0,
+    totalInUsd: 0,
+  };
+}
+
+function addTotals(acc: ReturnType<typeof emptyTotals>, row: BalanceReportRow) {
+  for (const key of Object.keys(acc) as Array<keyof ReturnType<typeof emptyTotals>>) {
+    acc[key] += Number(row[key]);
+  }
+  return acc;
 }

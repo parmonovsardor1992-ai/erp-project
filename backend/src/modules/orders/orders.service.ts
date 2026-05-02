@@ -12,12 +12,13 @@ export class OrdersService {
     private readonly prisma: PrismaService,
   ) {}
 
-  findAll(validOnly = true) {
-    return this.ordersRepository.findAll(validOnly);
+  async findAll(validOnly = true, filters?: { customerId?: string; dateFrom?: string; dateTo?: string; search?: string }) {
+    const orders = await this.ordersRepository.findAll(validOnly, filters);
+    return orders.map((order) => this.withPaymentInfo(order));
   }
 
-  findOne(id: string) {
-    return this.ordersRepository.findById(id);
+  async findOne(id: string) {
+    return this.withPaymentInfo(await this.ordersRepository.findById(id));
   }
 
   async create(dto: CreateOrderDto) {
@@ -64,6 +65,19 @@ export class OrdersService {
       amountUsd: dto.amountUsd,
       totalAmount: dto.totalAmount,
       structureAmount: dto.structureAmount,
+    };
+  }
+
+  private withPaymentInfo(order: Awaited<ReturnType<OrdersRepository['findById']>>) {
+    const paidUzs = order.transactions.reduce((sum, row) => sum + row.totalUzs.toNumber(), 0);
+    const paidUsd = order.transactions.reduce((sum, row) => sum + row.totalUsd.toNumber(), 0);
+    const paidAmount = order.currencyCode === 'USD' ? paidUsd : paidUzs;
+    const orderDebt = order.structureAmount.toNumber() - paidAmount;
+
+    return {
+      ...order,
+      paidAmount,
+      orderDebt,
     };
   }
 }

@@ -1,16 +1,20 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CurrencyCode, Prisma, TransactionType } from '@prisma/client';
+import { PrismaService } from '../../common/prisma/prisma.service';
 import { RatesService } from '../rates/rates.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionQueryDto } from './dto/transaction-query.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { TransactionsRepository } from './transactions.repository';
 
+type TransactionPersistInput = Omit<CreateTransactionDto, 'date'> & { date: string | Date };
+
 @Injectable()
 export class TransactionsService {
   constructor(
     private readonly transactionsRepository: TransactionsRepository,
     private readonly ratesService: RatesService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async findAll(query: TransactionQueryDto) {
@@ -21,8 +25,8 @@ export class TransactionsService {
       movementTypeId: query.movementTypeId,
       cashAccount: query.accountType ? { type: query.accountType } : undefined,
       date: {
-        gte: query.from ? new Date(query.from) : undefined,
-        lte: query.to ? new Date(query.to) : undefined,
+        gte: query.from ? this.normalizeDate(query.from) : undefined,
+        lte: query.to ? this.normalizeDate(query.to) : undefined,
       },
     };
 
@@ -39,9 +43,13 @@ export class TransactionsService {
   }
 
   async update(id: string, dto: UpdateTransactionDto) {
-    const current = await this.transactionsRepository.findById(id);
+    const current = await this.prisma.transaction.findUnique({ where: { id } });
+    if (!current) {
+      throw new NotFoundException('Операция не найдена');
+    }
+
     return this.persist({
-      date: dto.date ?? current.date.toISOString(),
+      date: dto.date ? this.normalizeDate(dto.date) : current.date,
       type: dto.type ?? current.type,
       cashAccountId: dto.cashAccountId ?? current.cashAccountId,
       movementTypeId: dto.movementTypeId ?? current.movementTypeId ?? undefined,
@@ -62,20 +70,36 @@ export class TransactionsService {
     return this.transactionsRepository.remove(id);
   }
 
-  private async persist(dto: CreateTransactionDto, id?: string) {
-    if (dto.type === TransactionType.EXCHANGE && !dto.exchangeAccountId) {
-      throw new BadRequestException('Exchange transactions require exchangeAccountId');
+  private async persist(dto: TransactionPersistInput, id?: string) {
+    const allowedTypes: TransactionType[] = [TransactionType.INCOME, TransactionType.EXPENSE];
+    if (!allowedTypes.includes(dto.type)) {
+      throw new BadRequestException('Недопустимый тип операции');
     }
 
-    const date = new Date(dto.date);
+    const date = this.normalizeDate(dto.date);
     const rate = await this.ratesService.getRateByDate(CurrencyCode.USD, date);
-    const amountUzs = new Prisma.Decimal(dto.amountUzs);
-    const amountUsd = new Prisma.Decimal(dto.amountUsd);
+    if (!rate) {
+      throw new BadRequestException('Курс валюты на выбранную дату не найден');
+    }
+
+    const amountUzs = this.toDecimal(dto.amountUzs ?? 0);
+    const amountUsd = this.toDecimal(dto.amountUsd ?? 0);
+
+    if (amountUzs.isNegative() || amountUsd.isNegative()) {
+      throw new BadRequestException('Сумма не может быть отрицательной');
+    }
+
+    if (amountUzs.eq(0) && amountUsd.eq(0)) {
+      throw new BadRequestException('Нельзя сохранить операцию с нулевой суммой');
+    }
+
+    await this.validateReferences(dto);
+
     const totalUzs = amountUzs.plus(amountUsd.mul(rate));
     const totalUsd = amountUsd.plus(amountUzs.div(rate));
-    const sign = dto.type === TransactionType.EXPENSE ? -1 : 1;
-    const signedTotalUzs = dto.type === TransactionType.EXCHANGE ? new Prisma.Decimal(0) : totalUzs.mul(sign);
-    const signedTotalUsd = dto.type === TransactionType.EXCHANGE ? new Prisma.Decimal(0) : totalUsd.mul(sign);
+    const sign = dto.type === TransactionType.INCOME ? 1 : -1;
+    const signedTotalUzs = totalUzs.mul(sign);
+    const signedTotalUsd = totalUsd.mul(sign);
 
     const data: Prisma.TransactionUncheckedCreateInput = {
       date,
@@ -104,5 +128,50 @@ export class TransactionsService {
     }
 
     return this.transactionsRepository.create(data);
+  }
+
+  private normalizeDate(value: string | Date) {
+    if (value instanceof Date) {
+      return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+    if (!year || !month || !day) {
+      throw new BadRequestException('Некорректная дата операции');
+    }
+
+    return new Date(year, month - 1, day);
+  }
+
+  private toDecimal(value: number) {
+    if (!Number.isFinite(value)) {
+      throw new BadRequestException('Сумма должна быть числом');
+    }
+
+    return new Prisma.Decimal(value);
+  }
+
+  private async validateReferences(dto: TransactionPersistInput) {
+    const cashAccount = await this.prisma.cashAccount.findUnique({ where: { id: dto.cashAccountId } });
+    if (!cashAccount) {
+      throw new BadRequestException('Счет не найден');
+    }
+
+    if (dto.movementTypeId) {
+      const movementType = await this.prisma.movementType.findUnique({ where: { id: dto.movementTypeId } });
+      if (!movementType) {
+        throw new BadRequestException('Тип движения не найден');
+      }
+      if (movementType.paymentType !== dto.type) {
+        throw new BadRequestException('Тип движения не соответствует типу операции');
+      }
+    }
+
+    if (dto.counterpartyId) {
+      const counterparty = await this.prisma.counterparty.findUnique({ where: { id: dto.counterpartyId } });
+      if (!counterparty) {
+        throw new BadRequestException('Контрагент не найден');
+      }
+    }
   }
 }

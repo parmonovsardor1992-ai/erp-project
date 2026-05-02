@@ -18,13 +18,14 @@ const directories = [
   { key: 'customers', label: 'Покупатели' },
   { key: 'suppliers', label: 'Поставщики' },
   { key: 'employees', label: 'Сотрудники' },
-  { key: 'products', label: 'Товары' },
+  { key: 'products', label: 'Готовая продукция' },
   { key: 'currencies', label: 'Валюты' },
   { key: 'currency-rates', label: 'Курсы валют' },
   { key: 'cash-accounts', label: 'Точки ДС' },
   { key: 'movement-types', label: 'Типы движения' },
   { key: 'expense-articles', label: 'Статьи расходов' },
   { key: 'departments', label: 'Подразделения' },
+  { key: 'settings', label: 'Настройки' },
 ] as const;
 
 type DirectoryKey = typeof directories[number]['key'];
@@ -40,6 +41,7 @@ const initialByDirectory: Record<DirectoryKey, Record<string, string>> = {
   'movement-types': { name: '', paymentType: 'INCOME' },
   'expense-articles': { name: '', groupName: '', section: 'GENERAL', defaultCurrency: '' },
   departments: { name: '' },
+  settings: { key: '', value: '' },
 };
 
 export default function DictionariesPage() {
@@ -182,6 +184,7 @@ function buildFields(directory: DirectoryKey): Field[] {
     'movement-types': [{ name: 'name', label: 'Название' }, { name: 'paymentType', label: 'Тип платежа', type: 'select', options: paymentTypes }],
     'expense-articles': [{ name: 'name', label: 'Название' }, { name: 'groupName', label: 'Группа' }, { name: 'section', label: 'Раздел', type: 'select', options: [{ value: 'GENERAL', label: 'Статьи расходов' }, { value: 'SUPPLY', label: 'Расходы снабжение' }, { value: 'UTILITY', label: 'Аренда/Коммуналка' }] }, { name: 'defaultCurrency', label: 'Валюта', type: 'select', options: currencies }],
     departments: [{ name: 'name', label: 'Название' }],
+    settings: [{ name: 'key', label: 'Ключ' }, { name: 'value', label: 'Значение' }],
   };
   return map[directory];
 }
@@ -213,5 +216,6 @@ function formatCell(value: unknown, field: Field, dictionaries: unknown) {
 
 function displayRow(directory: DirectoryKey, row: Record<string, unknown>) {
   if (directory === 'currency-rates') return `${row.code} ${row.date}`;
+  if (directory === 'settings') return String(row.key ?? '');
   return String(row.name ?? row.code ?? '');
 }

@@ -73,6 +73,8 @@ export type Order = {
   endDate?: string;
   amountUzs: string;
   amountUsd: string;
+  paidAmount?: number;
+  orderDebt?: number;
   counterparty: Counterparty;
 };
 
@@ -120,6 +122,7 @@ export type UtilityAccrual = {
   counterparty: Counterparty;
   category?: Category;
   expenseArticle?: ExpenseArticle;
+  comment?: string;
 };
 
 export type ExchangeTransaction = {

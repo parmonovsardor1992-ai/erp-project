@@ -30,11 +30,11 @@ export class RatesService {
     const rate = await this.ratesRepository.findLatestRate(code, date);
 
     if (!rate) {
-      throw new NotFoundException(`No ${code} rate found on or before ${date.toISOString().slice(0, 10)}`);
+      throw new NotFoundException(`Курс ${code} на дату ${date.toISOString().slice(0, 10)} не найден. Добавьте курс в справочнике курсов валют.`);
     }
 
     if (rate.rateToUzs.lte(0)) {
-      throw new BadRequestException('Currency rate must be greater than zero');
+      throw new BadRequestException('Курс валюты должен быть больше нуля.');
     }
 
     return rate.rateToUzs;

@@ -51,7 +51,6 @@ export default function ExchangesPage() {
       toAccountId: form.toAccountId || accounts[0]?.id,
       amountFrom: Number(form.amountFrom),
       amountTo,
-      rate,
     };
 
     if (editingId) {

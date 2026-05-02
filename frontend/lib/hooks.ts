@@ -137,8 +137,41 @@ export function useDeleteDirectoryItem(name: string) {
   });
 }
 
-export function useOrders() {
-  return useQuery({ queryKey: ['orders'], queryFn: api.orders });
+export function useOrders(params = '') {
+  return useQuery({ queryKey: ['orders', params], queryFn: () => api.orders(params) });
+}
+
+export function useCreateOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.createOrder,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+    },
+  });
+}
+
+export function useUpdateOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) => api.updateOrder(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+    },
+  });
+}
+
+export function useDeleteOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteOrder,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+    },
+  });
 }
 
 export function useDictionaries() {
@@ -168,6 +201,28 @@ export function useCreateSalaryAccrual() {
   });
 }
 
+export function useUpdateSalaryAccrual() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) => api.updateSalaryAccrual(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['salary-accruals'] });
+      await queryClient.invalidateQueries({ queryKey: ['salary'] });
+    },
+  });
+}
+
+export function useDeleteSalaryAccrual() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteSalaryAccrual,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['salary-accruals'] });
+      await queryClient.invalidateQueries({ queryKey: ['salary'] });
+    },
+  });
+}
+
 export function useUtilityAccruals() {
   return useQuery({ queryKey: ['utility-accruals'], queryFn: api.utilityAccruals });
 }
@@ -178,6 +233,28 @@ export function useCreateUtilityAccrual() {
     mutationFn: api.createUtilityAccrual,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['utility-accruals'] });
+    },
+  });
+}
+
+export function useUpdateUtilityAccrual() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) => api.updateUtilityAccrual(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['utility-accruals'] });
+      await queryClient.invalidateQueries({ queryKey: ['other-counterparties'] });
+    },
+  });
+}
+
+export function useDeleteUtilityAccrual() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteUtilityAccrual,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['utility-accruals'] });
+      await queryClient.invalidateQueries({ queryKey: ['other-counterparties'] });
     },
   });
 }

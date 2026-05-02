@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react';
 import { PageTitle } from '@/components/ui/page-title';
 import { SelectField, TextField } from '@/components/ui/field';
 import { money } from '@/lib/format';
-import { ru } from '@/lib/i18n';
 import { useDictionaries, useOtherCounterparties } from '@/lib/hooks';
+import { ru } from '@/lib/i18n';
 
 export default function OtherCounterpartiesPage() {
   const dictionaries = useDictionaries();
