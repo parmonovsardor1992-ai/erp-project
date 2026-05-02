@@ -2,6 +2,7 @@ import {
   BalanceReportRow,
   Counterparty,
   DictionaryPayload,
+  Employee,
   ExchangeTransaction,
   LoginResponse,
   Order,
@@ -16,7 +17,7 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
   const token = typeof window !== 'undefined' ? window.localStorage.getItem('erp-access-token') : null;
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -28,6 +29,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && !retried && !path.startsWith('/auth/')) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        return request<T>(path, init, true);
+      }
+    }
+
     const text = await response.text();
     let message = text || 'Ошибка запроса к серверу';
     try {
@@ -37,11 +45,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       // The backend may return plain text for older endpoints.
     }
     if (response.status === 401 && typeof window !== 'undefined') {
-      window.localStorage.removeItem('erp-access-token');
-      window.localStorage.removeItem('erp-user');
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
-      }
+      clearAuthAndRedirect();
     }
     throw new Error(message);
   }
@@ -49,10 +53,50 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function refreshAccessToken() {
+  if (typeof window === 'undefined') return false;
+  const refreshToken = window.localStorage.getItem('erp-refresh-token');
+  if (!refreshToken) return false;
+
+  try {
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!response.ok) {
+      clearAuthAndRedirect();
+      return false;
+    }
+    const payload = (await response.json()) as { accessToken: string; refreshToken: string; user?: unknown };
+    window.localStorage.setItem('erp-access-token', payload.accessToken);
+    window.localStorage.setItem('erp-refresh-token', payload.refreshToken);
+    if (payload.user) {
+      window.localStorage.setItem('erp-user', JSON.stringify(payload.user));
+    }
+    return true;
+  } catch {
+    clearAuthAndRedirect();
+    return false;
+  }
+}
+
+function clearAuthAndRedirect() {
+  window.localStorage.removeItem('erp-access-token');
+  window.localStorage.removeItem('erp-refresh-token');
+  window.localStorage.removeItem('erp-user');
+  if (!window.location.pathname.startsWith('/login')) {
+    window.location.href = '/login';
+  }
+}
+
 export const api = {
   login: (body: { username: string; password: string }) =>
     request<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  logout: (refreshToken: string) => request<{ success: boolean }>('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken }) }),
+  logoutAll: () => request<{ success: boolean }>('/auth/logout-all', { method: 'POST', body: JSON.stringify({}) }),
   users: () => request<UserListItem[]>('/users'),
+  employees: () => request<Employee[]>('/employees'),
   createUser: (body: unknown) => request<UserListItem>('/users', { method: 'POST', body: JSON.stringify(body) }),
   updateUser: (id: string, body: unknown) => request<UserListItem>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteUser: (id: string) => request<UserListItem>(`/users/${id}`, { method: 'DELETE' }),

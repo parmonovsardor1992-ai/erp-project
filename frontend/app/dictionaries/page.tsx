@@ -33,7 +33,7 @@ type DirectoryKey = typeof directories[number]['key'];
 const initialByDirectory: Record<DirectoryKey, Record<string, string>> = {
   customers: { name: '', phone: '', taxId: '' },
   suppliers: { name: '', phone: '', taxId: '' },
-  employees: { name: '', phone: '', taxId: '' },
+  employees: { name: '', phone: '', taxId: '', position: 'Сотрудник', departmentId: '' },
   products: { name: '', unit: 'шт' },
   currencies: { code: 'UZS', name: '' },
   'currency-rates': { code: 'USD', date: new Date().toISOString().slice(0, 10), rateToUzs: '12600' },
@@ -55,7 +55,7 @@ export default function DictionariesPage() {
   const update = useUpdateDirectoryItem(directory);
   const remove = useDeleteDirectoryItem(directory);
 
-  const fields = useMemo(() => buildFields(directory), [directory]);
+  const fields = useMemo(() => buildFields(directory, dictionaries.data), [directory, dictionaries.data]);
   const rows = (list.data ?? []) as Array<Record<string, unknown>>;
 
   function changeDirectory(value: DirectoryKey) {
@@ -162,7 +162,7 @@ export default function DictionariesPage() {
   );
 }
 
-function buildFields(directory: DirectoryKey): Field[] {
+function buildFields(directory: DirectoryKey, dictionaries?: { departments?: Array<{ id: string; name: string }> }): Field[] {
   const paymentTypes = [
     { value: 'INCOME', label: 'Приход' },
     { value: 'EXPENSE', label: 'Расход' },
@@ -176,7 +176,19 @@ function buildFields(directory: DirectoryKey): Field[] {
   const map: Record<DirectoryKey, Field[]> = {
     customers: commonCounterpartyFields(),
     suppliers: commonCounterpartyFields(),
-    employees: commonCounterpartyFields(),
+    employees: [
+      ...commonCounterpartyFields(),
+      { name: 'position', label: 'Должность' },
+      {
+        name: 'departmentId',
+        label: 'Подразделение',
+        type: 'select',
+        options: [
+          { value: '', label: 'Без подразделения' },
+          ...(dictionaries?.departments ?? []).map((department) => ({ value: department.id, label: department.name })),
+        ],
+      },
+    ],
     products: [{ name: 'name', label: 'Название' }, { name: 'unit', label: 'Ед. изм.' }],
     currencies: [{ name: 'code', label: 'Код', type: 'select', options: [{ value: 'UZS', label: 'UZS' }, { value: 'USD', label: 'USD' }] }, { name: 'name', label: 'Название' }],
     'currency-rates': [{ name: 'date', label: 'Дата', type: 'date' }, { name: 'code', label: 'Валюта', type: 'select', options: currencies.filter((item) => item.value) }, { name: 'rateToUzs', label: 'Курс', type: 'number' }],
@@ -211,6 +223,10 @@ function formatCell(value: unknown, field: Field, dictionaries: unknown) {
   const payload = dictionaries as { paymentTypes?: Array<{ id: string; name: string }>; cashAccountTypes?: Array<{ id: string; name: string }> } | undefined;
   if (field.name === 'paymentType') return payload?.paymentTypes?.find((item) => item.id === value)?.name ?? String(value);
   if (field.name === 'type') return payload?.cashAccountTypes?.find((item) => item.id === value)?.name ?? String(value);
+  if (field.name === 'departmentId') {
+    const departments = (dictionaries as { departments?: Array<{ id: string; name: string }> } | undefined)?.departments ?? [];
+    return departments.find((item) => item.id === value)?.name ?? String(value);
+  }
   return String(value);
 }
 

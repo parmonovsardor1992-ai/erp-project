@@ -27,10 +27,18 @@ export class SalaryAccrualsService {
   }
 
   async create(dto: CreateSalaryAccrualDto, userId = 'system') {
-    const employee = await this.prisma.employee.findUniqueOrThrow({
-      where: { id: dto.employeeId },
+    const employee = await this.prisma.employee.findFirst({
+      where: {
+        id: dto.employeeId,
+        deletedAt: null,
+        isActive: true,
+        counterparty: { deletedAt: null },
+      },
       include: { counterparty: true, department: true },
     });
+    if (!employee) {
+      throw new BadRequestException('Сотрудник не найден');
+    }
     const date = new Date(dto.date);
     await this.assertPeriodOpen(date);
     const rate = await this.ratesService.getRateByDate(CurrencyCode.USD, date);

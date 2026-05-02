@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CurrencyCode } from '@prisma/client';
+import { CounterpartyType, CurrencyCode } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 export type DirectoryName =
@@ -34,6 +34,7 @@ const directoryMap: Record<DirectoryName, string> = {
 type PrismaModel = {
   findMany(args?: unknown): Promise<unknown[]>;
   findUnique(args: unknown): Promise<unknown | null>;
+  findFirst(args: unknown): Promise<unknown | null>;
   create(args: unknown): Promise<unknown>;
   update(args: unknown): Promise<unknown>;
   delete(args: unknown): Promise<unknown>;
@@ -44,6 +45,10 @@ export class DirectoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(name: DirectoryName, search?: string) {
+    if (name === 'employees') {
+      return this.listEmployees(search);
+    }
+
     return this.getModel(name).findMany({
       where: this.baseWhere(name, search),
       orderBy: this.orderBy(name),
@@ -51,24 +56,177 @@ export class DirectoriesService {
   }
 
   async findOne(name: DirectoryName, id: string) {
-    const item = await this.getModel(name).findUnique({ where: { id } });
+    if (name === 'employees') {
+      const employee = await this.prisma.employee.findFirst({
+        where: { id, deletedAt: null, counterparty: { deletedAt: null } },
+        include: { counterparty: true, department: true },
+      });
+      if (!employee) throw new NotFoundException('Сотрудник не найден.');
+      return this.toEmployeeDirectoryRow(employee);
+    }
+
+    const item = await this.getModel(name).findFirst({ where: { id, deletedAt: null } });
     if (!item) throw new NotFoundException('Элемент справочника не найден.');
     return item;
   }
 
   async create(name: DirectoryName, body: Record<string, unknown>, userId = 'system') {
+    if (name === 'employees') {
+      return this.createEmployee(body, userId);
+    }
+
     const data = await this.normalizeData(name, body);
     return this.getModel(name).create({ data: { ...data, createdBy: userId } });
   }
 
   async update(name: DirectoryName, id: string, body: Record<string, unknown>, userId = 'system') {
+    if (name === 'employees') {
+      return this.updateEmployee(id, body, userId);
+    }
+
     const data = await this.normalizeData(name, body);
     return this.getModel(name).update({ where: { id }, data: { ...data, updatedBy: userId } });
   }
 
   async remove(name: DirectoryName, id: string, userId = 'system') {
+    if (name === 'employees') {
+      return this.removeEmployee(id, userId);
+    }
+
     await this.assertNotUsed(name, id);
     return this.getModel(name).update({ where: { id }, data: { deletedAt: new Date(), updatedBy: userId } });
+  }
+
+  private async listEmployees(search?: string) {
+    const where = {
+      deletedAt: null,
+      isActive: true,
+      counterparty: {
+        type: CounterpartyType.EMPLOYEE,
+        deletedAt: null,
+        ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
+      },
+    };
+    const employees = await this.prisma.employee.findMany({
+      where,
+      include: { counterparty: true, department: true },
+      orderBy: { counterparty: { name: 'asc' } },
+    });
+
+    console.log(`[directories/employees] count=${employees.length}; filter=${JSON.stringify({ deletedAt: null, isActive: true, search })}`);
+    return employees.map((employee) => this.toEmployeeDirectoryRow(employee));
+  }
+
+  private async createEmployee(body: Record<string, unknown>, userId: string) {
+    const name = String(body.name ?? '').trim();
+    if (!name) throw new BadRequestException('Имя сотрудника обязательно.');
+
+    return this.prisma.$transaction(async (tx) => {
+      const counterparty = await tx.counterparty.create({
+        data: {
+          name,
+          type: CounterpartyType.EMPLOYEE,
+          phone: this.optionalString(body.phone),
+          taxId: this.optionalString(body.taxId),
+          createdBy: userId,
+        },
+      });
+      const employee = await tx.employee.create({
+        data: {
+          counterpartyId: counterparty.id,
+          position: this.optionalString(body.position) ?? 'Сотрудник',
+          departmentId: this.optionalString(body.departmentId),
+          isActive: true,
+          createdBy: userId,
+        },
+        include: { counterparty: true, department: true },
+      });
+      return this.toEmployeeDirectoryRow(employee);
+    });
+  }
+
+  private async updateEmployee(id: string, body: Record<string, unknown>, userId: string) {
+    const current = await this.prisma.employee.findFirst({
+      where: { id, deletedAt: null },
+      include: { counterparty: true },
+    });
+    if (!current) throw new NotFoundException('Сотрудник не найден.');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.counterparty.update({
+        where: { id: current.counterpartyId },
+        data: {
+          name: this.optionalString(body.name) ?? current.counterparty.name,
+          phone: this.optionalString(body.phone),
+          taxId: this.optionalString(body.taxId),
+          updatedBy: userId,
+        },
+      });
+      const employee = await tx.employee.update({
+        where: { id },
+        data: {
+          position: this.optionalString(body.position) ?? current.position,
+          departmentId: this.optionalString(body.departmentId),
+          updatedBy: userId,
+        },
+        include: { counterparty: true, department: true },
+      });
+      return this.toEmployeeDirectoryRow(employee);
+    });
+  }
+
+  private async removeEmployee(id: string, userId: string) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id, deletedAt: null },
+      include: { counterparty: true },
+    });
+    if (!employee) throw new NotFoundException('Сотрудник не найден.');
+
+    await this.assertEmployeeNotUsed(employee.id, employee.counterpartyId);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.employee.update({ where: { id }, data: { deletedAt: new Date(), isActive: false, updatedBy: userId } });
+      await tx.counterparty.update({ where: { id: employee.counterpartyId }, data: { deletedAt: new Date(), updatedBy: userId } });
+      return { id, deletedAt: new Date() };
+    });
+  }
+
+  private async assertEmployeeNotUsed(employeeId: string, counterpartyId: string) {
+    const [salaryAccruals, salaryRecords, transactions, utility] = await Promise.all([
+      this.prisma.salaryAccrual.count({ where: { employeeId, deletedAt: null } }),
+      this.prisma.salaryRecord.count({ where: { employeeId: counterpartyId, deletedAt: null } }),
+      this.prisma.transaction.count({ where: { counterpartyId, deletedAt: null } }),
+      this.prisma.utilityAccrual.count({ where: { counterpartyId, deletedAt: null } }),
+    ]);
+    if (salaryAccruals + salaryRecords + transactions + utility > 0) {
+      throw new BadRequestException('Нельзя удалить: сотрудник используется в документах.');
+    }
+  }
+
+  private toEmployeeDirectoryRow(employee: {
+    id: string;
+    position: string;
+    departmentId: string | null;
+    isActive: boolean;
+    counterparty: { id: string; name: string; phone: string | null; taxId: string | null; type: string };
+    department?: { id: string; name: string } | null;
+  }) {
+    return {
+      id: employee.id,
+      counterpartyId: employee.counterparty.id,
+      name: employee.counterparty.name,
+      phone: employee.counterparty.phone,
+      taxId: employee.counterparty.taxId,
+      type: employee.counterparty.type,
+      position: employee.position,
+      departmentId: employee.departmentId ?? '',
+      department: employee.department,
+      isActive: employee.isActive,
+    };
+  }
+
+  private optionalString(value: unknown) {
+    const text = typeof value === 'string' ? value.trim() : '';
+    return text || undefined;
   }
 
   private getModel(name: DirectoryName): PrismaModel {

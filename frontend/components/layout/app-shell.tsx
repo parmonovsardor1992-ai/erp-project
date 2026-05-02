@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { api } from '@/lib/api';
 import { ru } from '@/lib/i18n';
 import { UserRole } from '@/lib/types';
 import { useAuthStore } from '@/store/auth-store';
@@ -141,7 +142,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               aria-label="Выйти"
               className="theme-surface theme-border grid h-8 w-8 place-items-center rounded border"
-              onClick={() => {
+              onClick={async () => {
+                const refreshToken = window.localStorage.getItem('erp-refresh-token');
+                if (refreshToken) {
+                  try {
+                    await api.logout(refreshToken);
+                  } catch {
+                    // Local logout must still work even if the server session is already gone.
+                  }
+                }
                 logout();
                 router.replace('/login');
               }}

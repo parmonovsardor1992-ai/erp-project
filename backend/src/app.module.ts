@@ -10,6 +10,7 @@ import { CounterpartiesModule } from './modules/counterparties/counterparties.mo
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DictionariesModule } from './modules/dictionaries/dictionaries.module';
 import { DirectoriesModule } from './modules/directories/directories.module';
+import { EmployeesModule } from './modules/employees/employees.module';
 import { ExchangesModule } from './modules/exchanges/exchanges.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { OtherCounterpartiesModule } from './modules/other-counterparties/other-counterparties.module';
@@ -35,6 +36,7 @@ import { UsersModule } from './modules/users/users.module';
     SalaryAccrualsModule,
     DictionariesModule,
     DirectoriesModule,
+    EmployeesModule,
     ExchangesModule,
     UtilityAccrualsModule,
     OtherCounterpartiesModule,

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { SelectField, TextField } from '@/components/ui/field';
 import { PageTitle } from '@/components/ui/page-title';
 import { money, shortDate } from '@/lib/format';
-import { useCreateSalaryAccrual, useDeleteSalaryAccrual, useDictionaries, useSalaryAccruals, useUpdateSalaryAccrual } from '@/lib/hooks';
+import { useCreateSalaryAccrual, useDeleteSalaryAccrual, useEmployees, useSalaryAccruals, useUpdateSalaryAccrual } from '@/lib/hooks';
 import { ru } from '@/lib/i18n';
 import { SalaryAccrual } from '@/lib/types';
 
@@ -13,13 +13,13 @@ const initialForm = { date: new Date().toISOString().slice(0, 10), employeeId: '
 
 export default function SalaryAccrualsPage() {
   const { data, isLoading } = useSalaryAccruals();
-  const dictionaries = useDictionaries();
+  const employees = useEmployees();
   const create = useCreateSalaryAccrual();
   const update = useUpdateSalaryAccrual();
   const remove = useDeleteSalaryAccrual();
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const employee = dictionaries.data?.employeesDetailed?.find((item) => item.id === form.employeeId);
+  const employee = employees.data?.find((item) => item.id === form.employeeId);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -102,7 +102,7 @@ export default function SalaryAccrualsPage() {
             <TextField type="date" value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} />
             <SelectField value={form.employeeId} onChange={(event) => setForm((current) => ({ ...current, employeeId: event.target.value }))}>
               <option value="">Сотрудник</option>
-              {(dictionaries.data?.employeesDetailed ?? []).map((item) => <option key={item.id} value={item.id}>{item.counterparty.name}</option>)}
+              {(employees.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.counterparty.name}</option>)}
             </SelectField>
             <TextField value={employee?.position ?? ''} readOnly placeholder="Должность" />
             <TextField value={employee?.department?.name ?? ''} readOnly placeholder="Подразделение" />

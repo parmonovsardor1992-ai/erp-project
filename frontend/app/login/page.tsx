@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result = await api.login({ username, password });
-      login(result.accessToken, result.user);
+      login(result.accessToken, result.refreshToken, result.user);
       router.replace('/dashboard');
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Ошибка входа');

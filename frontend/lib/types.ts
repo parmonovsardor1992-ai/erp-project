@@ -12,6 +12,7 @@ export type AuthUser = {
 
 export type LoginResponse = {
   accessToken: string;
+  refreshToken: string;
   user: AuthUser;
 };
 
@@ -19,6 +20,15 @@ export type UserListItem = AuthUser & {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type Employee = {
+  id: string;
+  position: string;
+  departmentId?: string;
+  isActive: boolean;
+  counterparty: Counterparty;
+  department?: { id: string; name: string };
 };
 
 export type PeriodLock = {
@@ -133,7 +143,7 @@ export type DictionaryPayload = {
   expenseCategories: Category[];
   expenseArticles?: ExpenseArticle[];
   departments: Array<{ id: string; name: string }>;
-  employeesDetailed?: Array<{ id: string; position: string; counterparty: Counterparty; department?: { id: string; name: string } }>;
+  employeesDetailed?: Employee[];
   products: Array<{ id: string; name: string; unit?: string }>;
   orders: Order[];
   paymentTypes: Array<{ id: TransactionType; name: string }>;
@@ -170,7 +180,7 @@ export type ExchangeTransaction = {
 export type SalaryAccrual = {
   id: string;
   date: string;
-  employee: { id: string; position: string; counterparty: Counterparty; department?: { id: string; name: string } };
+  employee: Employee;
   position: string;
   department?: { id: string; name: string };
   accrualMethod: string;

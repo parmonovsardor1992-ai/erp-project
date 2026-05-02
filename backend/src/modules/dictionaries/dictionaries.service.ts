@@ -32,7 +32,11 @@ export class DictionariesService {
       this.prisma.category.findMany({ where: { type: 'EXPENSE', deletedAt: null }, orderBy: { name: 'asc' } }),
       this.prisma.expenseArticle.findMany({ where: { deletedAt: null }, orderBy: [{ section: 'asc' }, { name: 'asc' }] }),
       this.prisma.department.findMany({ where: { deletedAt: null }, orderBy: { name: 'asc' } }),
-      this.prisma.employee.findMany({ where: { deletedAt: null }, include: { counterparty: true, department: true }, orderBy: { counterparty: { name: 'asc' } } }),
+      this.prisma.employee.findMany({
+        where: { deletedAt: null, isActive: true, counterparty: { deletedAt: null } },
+        include: { counterparty: true, department: true },
+        orderBy: { counterparty: { name: 'asc' } },
+      }),
       this.prisma.order.findMany({
         where: { structure: { not: null }, deletedAt: null },
         include: { counterparty: true },

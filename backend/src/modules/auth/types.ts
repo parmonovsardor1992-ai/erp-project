@@ -11,6 +11,12 @@ export type JwtPayload = {
   sub: string;
   username: string;
   role: UserRole;
+  jti: string;
   iat: number;
   exp: number;
+};
+
+export type RequestMeta = {
+  ip?: string;
+  userAgent?: string;
 };

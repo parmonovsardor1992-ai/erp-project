@@ -111,6 +111,7 @@ export function useCreateDirectoryItem(name: string) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['directory', name] });
       await queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+      if (name === 'employees') await queryClient.invalidateQueries({ queryKey: ['employees'] });
     },
   });
 }
@@ -122,6 +123,7 @@ export function useUpdateDirectoryItem(name: string) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['directory', name] });
       await queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+      if (name === 'employees') await queryClient.invalidateQueries({ queryKey: ['employees'] });
     },
   });
 }
@@ -133,6 +135,7 @@ export function useDeleteDirectoryItem(name: string) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['directory', name] });
       await queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+      if (name === 'employees') await queryClient.invalidateQueries({ queryKey: ['employees'] });
     },
   });
 }
@@ -176,6 +179,10 @@ export function useDeleteOrder() {
 
 export function useDictionaries() {
   return useQuery({ queryKey: ['dictionaries'], queryFn: api.dictionaries });
+}
+
+export function useEmployees() {
+  return useQuery({ queryKey: ['employees'], queryFn: api.employees });
 }
 
 export function useCounterparties() {
