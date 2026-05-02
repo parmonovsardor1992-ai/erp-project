@@ -1,0 +1,390 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  ACCOUNTANT
+  MANAGER
+  VIEWER
+}
+
+enum CounterpartyType {
+  CUSTOMER
+  SUPPLIER
+  EMPLOYEE
+}
+
+enum CurrencyCode {
+  UZS
+  USD
+}
+
+enum CashAccountType {
+  CASH
+  BANK
+  CARD
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  EXCHANGE
+}
+
+enum OrderStatus {
+  NEW
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      UserRole @default(VIEWER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Counterparty {
+  id             String           @id @default(cuid())
+  name           String
+  type           CounterpartyType
+  phone          String?
+  taxId          String?
+  notes          String?
+  orders         Order[]
+  transactions   Transaction[]
+  salaryRecords  SalaryRecord[]
+  expenseAccruals ExpenseAccrual[]
+  utilityAccruals UtilityAccrual[]
+  employeeProfile Employee?
+  salaryAccruals SalaryAccrual[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([name, type])
+  @@index([type])
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  number         String        @unique
+  counterpartyId String
+  counterparty   Counterparty  @relation(fields: [counterpartyId], references: [id])
+  name           String        @default("")
+  structure      String?
+  currencyCode   CurrencyCode  @default(UZS)
+  totalAmount    Decimal       @default(0) @db.Decimal(18, 2)
+  structureAmount Decimal      @default(0) @db.Decimal(18, 2)
+  status         OrderStatus   @default(NEW)
+  startDate      DateTime
+  endDate        DateTime?
+  amountUzs      Decimal       @default(0) @db.Decimal(18, 2)
+  amountUsd      Decimal       @default(0) @db.Decimal(18, 2)
+  transactions   Transaction[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([startDate])
+  @@index([structure])
+}
+
+model Currency {
+  id        String       @id @default(cuid())
+  code      CurrencyCode @unique
+  name      String
+  rates     CurrencyRate[]
+}
+
+model CurrencyRate {
+  id           String       @id @default(cuid())
+  currencyId   String
+  currency     Currency     @relation(fields: [currencyId], references: [id])
+  code         CurrencyCode
+  date         DateTime
+  rateToUzs    Decimal      @db.Decimal(18, 6)
+  createdAt    DateTime     @default(now())
+
+  @@unique([code, date])
+  @@index([date])
+}
+
+model CashAccount {
+  id           String          @id @default(cuid())
+  name         String
+  type         CashAccountType
+  currencyCode CurrencyCode
+  isActive     Boolean         @default(true)
+  transactions Transaction[]
+  exchangesFrom ExchangeTransaction[] @relation("ExchangeFromAccount")
+  exchangesTo   ExchangeTransaction[] @relation("ExchangeToAccount")
+  openingBalances OpeningBalance[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([name])
+  @@index([type])
+}
+
+model Category {
+  id           String          @id @default(cuid())
+  name         String
+  type         CategoryType
+  transactions Transaction[]
+  utilityAccruals UtilityAccrual[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([name, type])
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  unit      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Department {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  employees     Employee[]
+  salaryAccruals SalaryAccrual[]
+  salaryRecords SalaryRecord[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model PaymentType {
+  id           String          @id @default(cuid())
+  code         TransactionType @unique
+  name         String          @unique
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model MovementType {
+  id           String          @id @default(cuid())
+  name         String
+  paymentType  TransactionType
+  transactions Transaction[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([name, paymentType])
+  @@index([paymentType])
+}
+
+model ExpenseArticle {
+  id              String          @id @default(cuid())
+  name            String
+  groupName       String?
+  section         String          @default("GENERAL")
+  defaultCurrency CurrencyCode?
+  transactions    Transaction[]
+  utilityAccruals UtilityAccrual[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([name, section])
+}
+
+model Employee {
+  id             String       @id @default(cuid())
+  counterpartyId String       @unique
+  counterparty   Counterparty @relation(fields: [counterpartyId], references: [id])
+  position       String
+  departmentId   String?
+  department     Department?  @relation(fields: [departmentId], references: [id])
+  isActive       Boolean      @default(true)
+  salaryAccruals SalaryAccrual[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([departmentId])
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id              String          @id @default(cuid())
+  date            DateTime
+  type            TransactionType
+  movementTypeId  String?
+  movementType    MovementType?   @relation(fields: [movementTypeId], references: [id])
+  cashAccountId   String
+  cashAccount     CashAccount     @relation(fields: [cashAccountId], references: [id])
+  categoryId      String?
+  category        Category?       @relation(fields: [categoryId], references: [id])
+  expenseArticleId String?
+  expenseArticle  ExpenseArticle? @relation(fields: [expenseArticleId], references: [id])
+  counterpartyId  String?
+  counterparty    Counterparty?   @relation(fields: [counterpartyId], references: [id])
+  orderId         String?
+  order           Order?          @relation(fields: [orderId], references: [id])
+  orderStructure  String?
+  description     String?
+  amountUzs       Decimal         @default(0) @db.Decimal(18, 2)
+  amountUsd       Decimal         @default(0) @db.Decimal(18, 2)
+  rate            Decimal         @db.Decimal(18, 6)
+  totalUzs        Decimal         @db.Decimal(18, 2)
+  totalUsd        Decimal         @db.Decimal(18, 2)
+  signedTotalUzs  Decimal         @db.Decimal(18, 2)
+  signedTotalUsd  Decimal         @db.Decimal(18, 2)
+  exchangeAccountId String?
+  comment         String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([date])
+  @@index([type])
+  @@index([cashAccountId])
+  @@index([counterpartyId])
+  @@index([orderId])
+  @@index([movementTypeId])
+  @@index([expenseArticleId])
+}
+
+model ExchangeTransaction {
+  id            String       @id @default(cuid())
+  date          DateTime
+  fromAccountId String
+  fromAccount   CashAccount  @relation("ExchangeFromAccount", fields: [fromAccountId], references: [id])
+  toAccountId   String
+  toAccount     CashAccount  @relation("ExchangeToAccount", fields: [toAccountId], references: [id])
+  currencyFrom  CurrencyCode
+  currencyTo    CurrencyCode
+  amountFrom    Decimal      @db.Decimal(18, 2)
+  amountTo      Decimal      @db.Decimal(18, 2)
+  rate          Decimal      @db.Decimal(18, 6)
+  comment       String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([date])
+  @@index([fromAccountId])
+  @@index([toAccountId])
+}
+
+model SalaryAccrual {
+  id             String       @id @default(cuid())
+  date           DateTime
+  employeeId     String
+  employee       Employee     @relation(fields: [employeeId], references: [id])
+  counterpartyId String
+  counterparty   Counterparty @relation(fields: [counterpartyId], references: [id])
+  position       String
+  departmentId   String?
+  department     Department?  @relation(fields: [departmentId], references: [id])
+  accrualMethod  String
+  currencyCode   CurrencyCode
+  amount         Decimal      @db.Decimal(18, 2)
+  rate           Decimal      @db.Decimal(18, 6)
+  amountUzs      Decimal      @db.Decimal(18, 2)
+  amountUsd      Decimal      @db.Decimal(18, 2)
+  comment        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([date])
+  @@index([employeeId])
+  @@index([counterpartyId])
+  @@index([departmentId])
+}
+
+model OpeningBalance {
+  id            String       @id @default(cuid())
+  date          DateTime
+  cashAccountId String
+  cashAccount   CashAccount  @relation(fields: [cashAccountId], references: [id])
+  amountUzs     Decimal      @default(0) @db.Decimal(18, 2)
+  amountUsd     Decimal      @default(0) @db.Decimal(18, 2)
+  comment       String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([date, cashAccountId])
+  @@index([date])
+  @@index([cashAccountId])
+}
+
+model SalaryRecord {
+  id             String       @id @default(cuid())
+  employeeId     String
+  employee       Counterparty @relation(fields: [employeeId], references: [id])
+  position       String?
+  departmentId   String?
+  department     Department?  @relation(fields: [departmentId], references: [id])
+  period         DateTime
+  startBalance   Decimal      @default(0) @db.Decimal(18, 2)
+  accrued        Decimal      @default(0) @db.Decimal(18, 2)
+  paid           Decimal      @default(0) @db.Decimal(18, 2)
+  finalBalance   Decimal      @db.Decimal(18, 2)
+  comment        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([employeeId, period])
+  @@index([period])
+  @@index([departmentId])
+}
+
+model ExpenseAccrual {
+  id             String       @id @default(cuid())
+  counterpartyId String
+  counterparty   Counterparty @relation(fields: [counterpartyId], references: [id])
+  date           DateTime
+  description    String?
+  accruedUzs     Decimal      @default(0) @db.Decimal(18, 2)
+  paidUzs        Decimal      @default(0) @db.Decimal(18, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([date])
+  @@index([counterpartyId])
+}
+
+model UtilityAccrual {
+  id             String       @id @default(cuid())
+  date           DateTime
+  counterpartyId String
+  counterparty   Counterparty @relation(fields: [counterpartyId], references: [id])
+  categoryId     String?
+  category       Category?    @relation(fields: [categoryId], references: [id])
+  expenseArticleId String?
+  expenseArticle   ExpenseArticle? @relation(fields: [expenseArticleId], references: [id])
+  currencyCode   CurrencyCode
+  amount         Decimal      @db.Decimal(18, 2)
+  rate           Decimal      @db.Decimal(18, 6)
+  amountUzs      Decimal      @db.Decimal(18, 2)
+  amountUsd      Decimal      @db.Decimal(18, 2)
+  comment        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([date])
+  @@index([counterpartyId])
+  @@index([categoryId])
+  @@index([expenseArticleId])
+}

@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #edf1f7;
+  --surface: #ffffff;
+  --surface-soft: #f7f9fc;
+  --surface-muted: #e9eef6;
+  --border: #d8dee8;
+  --text: #182230;
+  --text-muted: #64748b;
+  --accent-soft: #eff6ff;
+  --accent-text: #2563eb;
+  --table-hover: #f8fbff;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #111827;
+  --surface: #182230;
+  --surface-soft: #1f2937;
+  --surface-muted: #263244;
+  --border: #3b4658;
+  --text: #e5e7eb;
+  --text-muted: #a8b3c5;
+  --accent-soft: #1d355c;
+  --accent-text: #93c5fd;
+  --table-hover: #223049;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background: var(--bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.bg-white {
+  background-color: var(--surface) !important;
+}
+
+.bg-panel,
+.bg-\[\#f7f9fc\] {
+  background-color: var(--surface-soft) !important;
+}
+
+.bg-blue-50 {
+  background-color: var(--accent-soft) !important;
+}
+
+.text-slate-700,
+.text-ink {
+  color: var(--text) !important;
+}
+
+.text-muted,
+.text-slate-500 {
+  color: var(--text-muted) !important;
+}
+
+.text-accent {
+  color: var(--accent-text) !important;
+}
+
+.border-line,
+.ring-blue-100 {
+  border-color: var(--border) !important;
+}
+
+.erp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.erp-table th {
+  background: var(--surface-muted);
+  color: var(--text);
+  font-weight: 600;
+  text-align: left;
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.erp-table td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.erp-table tr:hover td {
+  background: var(--table-hover);
+}
+
+.theme-surface {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.theme-soft {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.theme-muted {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.theme-border {
+  border-color: var(--border);
+}
+
+.theme-muted-text {
+  color: var(--text-muted);
+}

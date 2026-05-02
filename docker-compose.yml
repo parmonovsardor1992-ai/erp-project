@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: erp_accounting_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: erp_accounting
+    ports:
+      - "5433:5432"
+    volumes:
+      - erp_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  erp_postgres_data:

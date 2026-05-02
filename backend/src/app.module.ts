@@ -1,0 +1,37 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './common/prisma/prisma.module';
+import { BalancesModule } from './modules/balances/balances.module';
+import { CounterpartiesModule } from './modules/counterparties/counterparties.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { DictionariesModule } from './modules/dictionaries/dictionaries.module';
+import { DirectoriesModule } from './modules/directories/directories.module';
+import { ExchangesModule } from './modules/exchanges/exchanges.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { OtherCounterpartiesModule } from './modules/other-counterparties/other-counterparties.module';
+import { RatesModule } from './modules/rates/rates.module';
+import { SalaryModule } from './modules/salary/salary.module';
+import { SalaryAccrualsModule } from './modules/salary-accruals/salary-accruals.module';
+import { TransactionsModule } from './modules/transactions/transactions.module';
+import { UtilityAccrualsModule } from './modules/utility-accruals/utility-accruals.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    RatesModule,
+    TransactionsModule,
+    OrdersModule,
+    BalancesModule,
+    CounterpartiesModule,
+    SalaryModule,
+    SalaryAccrualsModule,
+    DictionariesModule,
+    DirectoriesModule,
+    ExchangesModule,
+    UtilityAccrualsModule,
+    OtherCounterpartiesModule,
+    DashboardModule,
+  ],
+})
+export class AppModule {}
