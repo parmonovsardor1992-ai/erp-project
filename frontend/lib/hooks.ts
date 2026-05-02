@@ -266,3 +266,101 @@ export function useOtherCounterparties(params: string) {
 export function useDashboard() {
   return useQuery({ queryKey: ['dashboard'], queryFn: api.dashboard });
 }
+
+export function useUsers() {
+  return useQuery({ queryKey: ['users'], queryFn: api.users });
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.createUser,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) => api.updateUser(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteUser,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useUpdateUserPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) => api.updateUserPassword(id, password),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useActivateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.activateUser,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useDeactivateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deactivateUser,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function usePeriodLocks() {
+  return useQuery({ queryKey: ['period-locks'], queryFn: api.periodLocks });
+}
+
+export function useCreatePeriodLock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.createPeriodLock,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['period-locks'] });
+    },
+  });
+}
+
+export function useUpdatePeriodLock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: unknown }) => api.updatePeriodLock(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['period-locks'] });
+    },
+  });
+}
+
+export function useDeletePeriodLock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deletePeriodLock,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['period-locks'] });
+    },
+  });
+}

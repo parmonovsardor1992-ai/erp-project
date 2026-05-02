@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CurrencyCode, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RatesService } from '../rates/rates.service';
@@ -26,8 +26,9 @@ export class UtilityAccrualsService {
     });
   }
 
-  async create(dto: CreateUtilityAccrualDto) {
+  async create(dto: CreateUtilityAccrualDto, userId = 'system') {
     const date = new Date(dto.date);
+    await this.assertPeriodOpen(date);
     const rate = await this.ratesService.getRateByDate(CurrencyCode.USD, date);
     const amount = new Prisma.Decimal(dto.amount);
     const amountUzs = dto.currencyCode === CurrencyCode.USD ? amount.mul(rate) : amount;
@@ -45,18 +46,32 @@ export class UtilityAccrualsService {
         amountUzs,
         amountUsd,
         comment: dto.comment,
-        createdBy: 'system',
+        createdBy: userId,
       },
       include: { counterparty: true, category: true, expenseArticle: true },
     });
   }
 
-  remove(id: string) {
-    return this.prisma.utilityAccrual.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
+  async remove(id: string, userId = 'system') {
+    const current = await this.findOne(id);
+    await this.assertPeriodOpen(current.date);
+    return this.prisma.utilityAccrual.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: userId } });
   }
 
-  async update(id: string, dto: CreateUtilityAccrualDto) {
-    await this.remove(id);
-    return this.create(dto);
+  async update(id: string, dto: CreateUtilityAccrualDto, userId = 'system') {
+    await this.remove(id, userId);
+    return this.create(dto, userId);
+  }
+
+  private async assertPeriodOpen(date: Date) {
+    const locked = await this.prisma.periodLock.findFirst({
+      where: {
+        isLocked: true,
+        deletedAt: null,
+        dateFrom: { lte: date },
+        dateTo: { gte: date },
+      },
+    });
+    if (locked) throw new BadRequestException('Период закрыт. Редактирование запрещено.');
   }
 }

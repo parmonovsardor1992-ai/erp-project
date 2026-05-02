@@ -9,10 +9,12 @@ import {
   CreditCard,
   Landmark,
   LayoutDashboard,
+  LockKeyhole,
   LogOut,
   Menu,
   Moon,
   Sun,
+  Users,
   Wallet,
   WalletCards,
 } from 'lucide-react';
@@ -38,6 +40,8 @@ const items = [
   { href: '/other-counterparties', label: ru.nav.counterparties, icon: Contact, roles: ['ADMIN', 'ACCOUNTANT', 'MANAGER'] },
   { href: '/dictionaries', label: ru.nav.dictionaries, icon: BookOpen, roles: ['ADMIN', 'ACCOUNTANT', 'MANAGER'] },
   { href: '/balances', label: ru.nav.cashBalances, icon: WalletCards, roles: ['ADMIN', 'ACCOUNTANT', 'VIEWER'] },
+  { href: '/period-locks', label: 'Закрытие периода', icon: LockKeyhole, roles: ['ADMIN', 'ACCOUNTANT'] },
+  { href: '/users', label: 'Пользователи', icon: Users, roles: ['ADMIN'] },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

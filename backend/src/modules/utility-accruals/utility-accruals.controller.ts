@@ -1,4 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthUser } from '../auth/types';
 import { CreateUtilityAccrualDto } from './dto/create-utility-accrual.dto';
 import { UtilityAccrualsService } from './utility-accruals.service';
 
@@ -17,17 +19,17 @@ export class UtilityAccrualsController {
   }
 
   @Post()
-  create(@Body() dto: CreateUtilityAccrualDto) {
-    return this.utilityAccrualsService.create(dto);
+  create(@Body() dto: CreateUtilityAccrualDto, @CurrentUser() user?: AuthUser) {
+    return this.utilityAccrualsService.create(dto, user?.id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.utilityAccrualsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user?: AuthUser) {
+    return this.utilityAccrualsService.remove(id, user?.id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: CreateUtilityAccrualDto) {
-    return this.utilityAccrualsService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: CreateUtilityAccrualDto, @CurrentUser() user?: AuthUser) {
+    return this.utilityAccrualsService.update(id, dto, user?.id);
   }
 }

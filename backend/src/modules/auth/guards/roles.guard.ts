@@ -57,13 +57,18 @@ export class RolesGuard implements CanActivate {
         'salary-accruals',
         'utility-accruals',
         'other-counterparties',
+        'orders',
         'counterparties',
         'dictionaries',
         'directories',
         'currency-rates',
         'rates',
+        'period-locks',
       ];
-      return allowed.includes(first) || this.deny();
+      if (!allowed.includes(first)) return this.deny();
+      if (first === 'orders') return method === 'GET' || this.deny();
+      if (first === 'period-locks') return method === 'GET' || this.deny();
+      return true;
     }
 
     if (role === UserRole.MANAGER) {

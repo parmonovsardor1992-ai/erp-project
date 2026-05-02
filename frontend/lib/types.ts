@@ -15,6 +15,21 @@ export type LoginResponse = {
   user: AuthUser;
 };
 
+export type UserListItem = AuthUser & {
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PeriodLock = {
+  id: string;
+  dateFrom: string;
+  dateTo: string;
+  isLocked: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type CashAccount = {
   id: string;
   name: string;

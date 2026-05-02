@@ -5,11 +5,13 @@ import {
   ExchangeTransaction,
   LoginResponse,
   Order,
+  PeriodLock,
   SalaryAccrual,
   SalaryRecord,
   Transaction,
   TransactionType,
   UtilityAccrual,
+  UserListItem,
 } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
@@ -50,6 +52,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   login: (body: { username: string; password: string }) =>
     request<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  users: () => request<UserListItem[]>('/users'),
+  createUser: (body: unknown) => request<UserListItem>('/users', { method: 'POST', body: JSON.stringify(body) }),
+  updateUser: (id: string, body: unknown) => request<UserListItem>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteUser: (id: string) => request<UserListItem>(`/users/${id}`, { method: 'DELETE' }),
+  updateUserPassword: (id: string, password: string) =>
+    request<UserListItem>(`/users/${id}/password`, { method: 'PATCH', body: JSON.stringify({ password }) }),
+  activateUser: (id: string) => request<UserListItem>(`/users/${id}/activate`, { method: 'PATCH', body: JSON.stringify({}) }),
+  deactivateUser: (id: string) => request<UserListItem>(`/users/${id}/deactivate`, { method: 'PATCH', body: JSON.stringify({}) }),
+  periodLocks: () => request<PeriodLock[]>('/period-locks'),
+  createPeriodLock: (body: unknown) => request<PeriodLock>('/period-locks', { method: 'POST', body: JSON.stringify(body) }),
+  updatePeriodLock: (id: string, body: unknown) => request<PeriodLock>(`/period-locks/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deletePeriodLock: (id: string) => request<PeriodLock>(`/period-locks/${id}`, { method: 'DELETE' }),
   balances: () => request<Array<{ account: { id: string; name: string; type: string }; balanceUzs: string; balanceUsd: string }>>('/balances'),
   pointBalances: () => request<Array<{ point: string; balanceUzs: number; balanceUsd: number; totalUzs: number; totalUsd: number }>>('/balances/points'),
   balanceReport: (params = '') => request<BalanceReportRow[]>(`/balances/report${params}`),

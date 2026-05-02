@@ -19,6 +19,7 @@ import { SalaryModule } from './modules/salary/salary.module';
 import { SalaryAccrualsModule } from './modules/salary-accruals/salary-accruals.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { UtilityAccrualsModule } from './modules/utility-accruals/utility-accruals.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { UtilityAccrualsModule } from './modules/utility-accruals/utility-accrua
     OtherCounterpartiesModule,
     DashboardModule,
     PeriodLocksModule,
+    UsersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
