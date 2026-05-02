@@ -69,8 +69,9 @@ export class OrdersService {
   }
 
   private withPaymentInfo(order: Awaited<ReturnType<OrdersRepository['findById']>>) {
-    const paidUzs = order.transactions.reduce((sum, row) => sum + row.totalUzs.toNumber(), 0);
-    const paidUsd = order.transactions.reduce((sum, row) => sum + row.totalUsd.toNumber(), 0);
+    const incomeTransactions = order.transactions.filter((row) => row.type === 'INCOME');
+    const paidUzs = incomeTransactions.reduce((sum, row) => sum + row.totalUzs.toNumber(), 0);
+    const paidUsd = incomeTransactions.reduce((sum, row) => sum + row.totalUsd.toNumber(), 0);
     const paidAmount = order.currencyCode === 'USD' ? paidUsd : paidUzs;
     const orderDebt = order.structureAmount.toNumber() - paidAmount;
 

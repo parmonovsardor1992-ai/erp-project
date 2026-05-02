@@ -37,19 +37,28 @@ export class BalancesService {
   }
 
   async report(from?: string, to?: string, accountType?: CashAccountType) {
-    const rate = await this.ratesService.getRateByDate(CurrencyCode.USD, new Date());
+    const reportRateDate = to ? this.normalizeDate(to) : new Date();
+    const rate = await this.ratesService.getRateByDate(CurrencyCode.USD, reportRateDate);
     const accounts = await this.prisma.cashAccount.findMany({
       where: { isActive: true, type: accountType },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
     });
+    const fromDate = from ? this.normalizeDate(from) : undefined;
+    const toDate = to ? this.normalizeDate(to) : undefined;
     const dateFilter = {
-      gte: from ? new Date(from) : undefined,
-      lte: to ? new Date(to) : undefined,
+      gte: fromDate,
+      lte: toDate,
     };
 
     return Promise.all(accounts.map(async (account) => {
       const [opening, income, expense, exchangeIn, exchangeOut] = await Promise.all([
-        this.prisma.openingBalance.findFirst({ where: { cashAccountId: account.id }, orderBy: { date: 'desc' } }),
+        this.prisma.openingBalance.findFirst({
+          where: {
+            cashAccountId: account.id,
+            date: fromDate ? { lte: fromDate } : undefined,
+          },
+          orderBy: { date: 'desc' },
+        }),
         this.prisma.transaction.aggregate({
           where: { cashAccountId: account.id, type: TransactionType.INCOME, date: dateFilter },
           _sum: { totalUzs: true, totalUsd: true },
@@ -94,5 +103,10 @@ export class BalancesService {
         totalInUsd: closingBalanceUsd + closingBalanceUzs / rate.toNumber(),
       };
     }));
+  }
+
+  private normalizeDate(value: string) {
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+    return new Date(year, month - 1, day);
   }
 }

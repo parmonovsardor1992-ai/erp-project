@@ -173,5 +173,12 @@ export class TransactionsService {
         throw new BadRequestException('Контрагент не найден');
       }
     }
+
+    if (dto.orderId) {
+      const order = await this.prisma.order.findUnique({ where: { id: dto.orderId } });
+      if (!order) {
+        throw new BadRequestException('Заказ не найден');
+      }
+    }
   }
 }
