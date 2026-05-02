@@ -5,9 +5,17 @@ import {
   CurrencyCode,
   PrismaClient,
   TransactionType,
+  UserRole,
 } from '@prisma/client';
+import { scryptSync } from 'crypto';
 
 const prisma = new PrismaClient();
+
+function hashPassword(password: string): string {
+  const salt = 'erp-admin-seed-salt';
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  return `scrypt:${salt}:${hash}`;
+}
 
 async function upsertCounterparty(name: string, type: CounterpartyType) {
   return prisma.counterparty.upsert({
@@ -18,6 +26,26 @@ async function upsertCounterparty(name: string, type: CounterpartyType) {
 }
 
 async function main() {
+  await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: {
+      fullName: 'Администратор',
+      role: UserRole.ADMIN,
+      isActive: true,
+      deletedAt: null,
+    },
+    create: {
+      username: 'admin',
+      email: 'admin@example.local',
+      name: 'Администратор',
+      fullName: 'Администратор',
+      passwordHash: hashPassword('Admin123456!'),
+      role: UserRole.ADMIN,
+      isActive: true,
+      createdBy: 'system',
+    },
+  });
+
   await prisma.currency.upsert({
     where: { code: CurrencyCode.UZS },
     update: { name: 'UZS' },

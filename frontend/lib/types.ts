@@ -1,6 +1,19 @@
 export type TransactionType = 'INCOME' | 'EXPENSE' | 'EXCHANGE';
 export type CashAccountType = 'CASH' | 'BANK' | 'CARD';
 export type CounterpartyType = 'CUSTOMER' | 'SUPPLIER' | 'EMPLOYEE';
+export type UserRole = 'ADMIN' | 'ACCOUNTANT' | 'MANAGER' | 'VIEWER';
+
+export type AuthUser = {
+  id: string;
+  username: string;
+  fullName: string;
+  role: UserRole;
+};
+
+export type LoginResponse = {
+  accessToken: string;
+  user: AuthUser;
+};
 
 export type CashAccount = {
   id: string;

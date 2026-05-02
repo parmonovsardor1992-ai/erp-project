@@ -26,25 +26,31 @@ export class ExchangesService {
     });
   }
 
-  create(dto: CreateExchangeDto) {
-    return this.persist(dto);
+  create(dto: CreateExchangeDto, userId = 'system') {
+    return this.persist(dto, undefined, userId);
   }
 
-  async update(id: string, dto: CreateExchangeDto) {
+  async update(id: string, dto: CreateExchangeDto, userId = 'system') {
     await this.findOne(id);
-    return this.persist(dto, id);
+    return this.persist(dto, id, userId);
   }
 
-  remove(id: string) {
-    return this.prisma.exchangeTransaction.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
+  remove(id: string, userId = 'system') {
+    return this.prisma.exchangeTransaction.update({
+      where: { id },
+      data: { deletedAt: new Date(), updatedBy: userId },
+    });
   }
 
-  private async persist(dto: CreateExchangeDto, id?: string) {
+  private async persist(dto: CreateExchangeDto, id?: string, userId = 'system') {
     if (!dto.fromAccountId) {
       throw new BadRequestException('Счет списания не найден');
     }
     if (!dto.toAccountId) {
       throw new BadRequestException('Счет зачисления не найден');
+    }
+    if (dto.fromAccountId === dto.toAccountId) {
+      throw new BadRequestException('Счета обмена должны отличаться');
     }
     if (dto.currencyFrom === dto.currencyTo) {
       throw new BadRequestException('Валюты обмена должны отличаться');
@@ -95,8 +101,8 @@ export class ExchangesService {
         amountTo: expectedAmountTo,
         rate,
         comment: dto.comment,
-        createdBy: id ? undefined : 'system',
-        updatedBy: id ? 'system' : undefined,
+        createdBy: id ? undefined : userId,
+        updatedBy: id ? userId : undefined,
       };
 
       if (id) {
@@ -122,7 +128,7 @@ export class ExchangesService {
   private async assertPeriodOpen(date: Date, tx: Prisma.TransactionClient) {
     const locked = await tx.periodLock.findFirst({
       where: {
-        isClosed: true,
+        isLocked: true,
         deletedAt: null,
         dateFrom: { lte: date },
         dateTo: { gte: date },

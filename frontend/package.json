@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"app/**/*.{ts,tsx}\" \"features/**/*.{ts,tsx}\" \"components/**/*.{ts,tsx}\" \"lib/**/*.ts\""
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.8",

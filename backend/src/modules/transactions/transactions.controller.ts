@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { CashAccountType } from '@prisma/client';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthUser } from '../auth/types';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionQueryDto } from './dto/transaction-query.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -15,18 +17,18 @@ export class TransactionsController {
   }
 
   @Post()
-  create(@Body() dto: CreateTransactionDto) {
-    return this.transactionsService.create(dto);
+  create(@Body() dto: CreateTransactionDto, @CurrentUser() user?: AuthUser) {
+    return this.transactionsService.create(dto, user?.id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateTransactionDto) {
-    return this.transactionsService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateTransactionDto, @CurrentUser() user?: AuthUser) {
+    return this.transactionsService.update(id, dto, user?.id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.transactionsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user?: AuthUser) {
+    return this.transactionsService.remove(id, user?.id);
   }
 }
 

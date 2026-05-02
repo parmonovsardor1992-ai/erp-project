@@ -32,7 +32,7 @@ export class TransactionsRepository {
     return this.prisma.transaction.update({ where: { id }, data, include: { cashAccount: true, category: true, expenseArticle: true, counterparty: true, movementType: true, order: true } });
   }
 
-  remove(id: string) {
-    return this.prisma.transaction.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
+  remove(id: string, userId = 'system') {
+    return this.prisma.transaction.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: userId } });
   }
 }

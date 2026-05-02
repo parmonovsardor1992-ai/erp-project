@@ -50,12 +50,23 @@ enum OrderStatus {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  role      UserRole @default(VIEWER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  name         String?
+  username     String   @unique
+  passwordHash String
+  fullName     String
+  role         UserRole @default(VIEWER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  deletedAt    DateTime?
+
+  @@index([role])
+  @@index([isActive])
+  @@index([deletedAt])
 }
 
 model Counterparty {
@@ -481,7 +492,7 @@ model PeriodLock {
   id        String    @id @default(cuid())
   dateFrom  DateTime
   dateTo    DateTime
-  isClosed  Boolean   @default(false)
+  isLocked  Boolean   @default(false)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   createdBy String?
@@ -490,6 +501,6 @@ model PeriodLock {
 
   @@index([dateFrom])
   @@index([dateTo])
-  @@index([isClosed])
+  @@index([isLocked])
   @@index([deletedAt])
 }

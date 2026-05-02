@@ -38,7 +38,7 @@ export class OrdersRepository {
     return this.prisma.order.update({ where: { id }, data });
   }
 
-  remove(id: string) {
-    return this.prisma.order.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
+  remove(id: string, userId = 'system') {
+    return this.prisma.order.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: userId } });
   }
 }

@@ -38,39 +38,43 @@ export class TransactionsService {
     return { items, total, page: query.page, limit: query.limit };
   }
 
-  async create(dto: CreateTransactionDto) {
-    return this.persist(dto);
+  async create(dto: CreateTransactionDto, userId = 'system') {
+    return this.persist(dto, undefined, userId);
   }
 
-  async update(id: string, dto: UpdateTransactionDto) {
+  async update(id: string, dto: UpdateTransactionDto, userId = 'system') {
     const current = await this.prisma.transaction.findFirst({ where: { id, deletedAt: null } });
     if (!current) {
       throw new NotFoundException('Операция не найдена');
     }
 
-    return this.persist({
-      date: dto.date ? this.normalizeDate(dto.date) : current.date,
-      type: dto.type ?? current.type,
-      cashAccountId: dto.cashAccountId ?? current.cashAccountId,
-      movementTypeId: dto.movementTypeId ?? current.movementTypeId ?? undefined,
-      exchangeAccountId: dto.exchangeAccountId ?? current.exchangeAccountId ?? undefined,
-      categoryId: dto.categoryId ?? current.categoryId ?? undefined,
-      expenseArticleId: dto.expenseArticleId ?? current.expenseArticleId ?? undefined,
-      counterpartyId: dto.counterpartyId ?? current.counterpartyId ?? undefined,
-      orderId: dto.orderId ?? current.orderId ?? undefined,
-      orderStructure: dto.orderStructure ?? current.orderStructure ?? undefined,
-      description: dto.description ?? current.description ?? undefined,
-      comment: dto.comment ?? current.comment ?? undefined,
-      amountUzs: dto.amountUzs ?? current.amountUzs.toNumber(),
-      amountUsd: dto.amountUsd ?? current.amountUsd.toNumber(),
-    }, id);
+    return this.persist(
+      {
+        date: dto.date ? this.normalizeDate(dto.date) : current.date,
+        type: dto.type ?? current.type,
+        cashAccountId: dto.cashAccountId ?? current.cashAccountId,
+        movementTypeId: dto.movementTypeId ?? current.movementTypeId ?? undefined,
+        exchangeAccountId: dto.exchangeAccountId ?? current.exchangeAccountId ?? undefined,
+        categoryId: dto.categoryId ?? current.categoryId ?? undefined,
+        expenseArticleId: dto.expenseArticleId ?? current.expenseArticleId ?? undefined,
+        counterpartyId: dto.counterpartyId ?? current.counterpartyId ?? undefined,
+        orderId: dto.orderId ?? current.orderId ?? undefined,
+        orderStructure: dto.orderStructure ?? current.orderStructure ?? undefined,
+        description: dto.description ?? current.description ?? undefined,
+        comment: dto.comment ?? current.comment ?? undefined,
+        amountUzs: dto.amountUzs ?? current.amountUzs.toNumber(),
+        amountUsd: dto.amountUsd ?? current.amountUsd.toNumber(),
+      },
+      id,
+      userId,
+    );
   }
 
-  async remove(id: string) {
-    return this.transactionsRepository.remove(id);
+  async remove(id: string, userId = 'system') {
+    return this.transactionsRepository.remove(id, userId);
   }
 
-  private async persist(dto: TransactionPersistInput, id?: string) {
+  private async persist(dto: TransactionPersistInput, id?: string, userId = 'system') {
     if (dto.type === TransactionType.EXCHANGE) {
       throw new BadRequestException('Обмен валют нужно оформлять в разделе Обмен валют');
     }
@@ -82,7 +86,7 @@ export class TransactionsService {
 
     const date = this.normalizeDate(dto.date);
     const rate = await this.ratesService.getRateByDate(CurrencyCode.USD, date);
-    if (!rate) {
+    if (!rate || rate.lte(0)) {
       throw new BadRequestException('Курс валюты на выбранную дату не найден');
     }
 
@@ -127,21 +131,35 @@ export class TransactionsService {
         signedTotalUzs,
         signedTotalUsd,
         comment: dto.comment,
-        createdBy: id ? undefined : 'system',
-        updatedBy: id ? 'system' : undefined,
+        createdBy: id ? undefined : userId,
+        updatedBy: id ? userId : undefined,
       };
 
       if (id) {
         return tx.transaction.update({
           where: { id },
           data,
-          include: { cashAccount: true, category: true, expenseArticle: true, counterparty: true, movementType: true, order: true },
+          include: {
+            cashAccount: true,
+            category: true,
+            expenseArticle: true,
+            counterparty: true,
+            movementType: true,
+            order: true,
+          },
         });
       }
 
       return tx.transaction.create({
         data,
-        include: { cashAccount: true, category: true, expenseArticle: true, counterparty: true, movementType: true, order: true },
+        include: {
+          cashAccount: true,
+          category: true,
+          expenseArticle: true,
+          counterparty: true,
+          movementType: true,
+          order: true,
+        },
       });
     });
   }
@@ -201,7 +219,7 @@ export class TransactionsService {
   private async assertPeriodOpen(date: Date, tx: Prisma.TransactionClient) {
     const locked = await tx.periodLock.findFirst({
       where: {
-        isClosed: true,
+        isLocked: true,
         deletedAt: null,
         dateFrom: { lte: date },
         dateTo: { gte: date },

@@ -9,6 +9,7 @@ import {
   CreditCard,
   Landmark,
   LayoutDashboard,
+  LogOut,
   Menu,
   Moon,
   Sun,
@@ -16,46 +17,76 @@ import {
   WalletCards,
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { ru } from '@/lib/i18n';
+import { UserRole } from '@/lib/types';
+import { useAuthStore } from '@/store/auth-store';
 import { useUiStore } from '@/store/ui-store';
 
 const items = [
-  { href: '/dashboard', label: ru.nav.dashboard, icon: LayoutDashboard },
-  { href: '/cash', label: ru.nav.cash, icon: Wallet },
-  { href: '/bank', label: ru.nav.bank, icon: Landmark },
-  { href: '/card', label: ru.nav.card, icon: CreditCard },
-  { href: '/exchanges', label: ru.nav.exchanges, icon: WalletCards },
-  { href: '/orders', label: ru.nav.orders, icon: BriefcaseBusiness },
-  { href: '/salary', label: ru.nav.salary, icon: BarChart3 },
-  { href: '/salary-accruals', label: ru.nav.salaryAccruals, icon: WalletCards },
-  { href: '/utility-accruals', label: ru.nav.utilityAccruals, icon: Building2 },
-  { href: '/other-counterparties', label: ru.nav.counterparties, icon: Contact },
-  { href: '/dictionaries', label: ru.nav.dictionaries, icon: BookOpen },
-  { href: '/balances', label: ru.nav.cashBalances, icon: WalletCards },
+  { href: '/dashboard', label: ru.nav.dashboard, icon: LayoutDashboard, roles: ['ADMIN', 'ACCOUNTANT', 'MANAGER', 'VIEWER'] },
+  { href: '/cash', label: ru.nav.cash, icon: Wallet, roles: ['ADMIN', 'ACCOUNTANT'] },
+  { href: '/bank', label: ru.nav.bank, icon: Landmark, roles: ['ADMIN', 'ACCOUNTANT'] },
+  { href: '/card', label: ru.nav.card, icon: CreditCard, roles: ['ADMIN', 'ACCOUNTANT'] },
+  { href: '/exchanges', label: ru.nav.exchanges, icon: WalletCards, roles: ['ADMIN', 'ACCOUNTANT'] },
+  { href: '/orders', label: ru.nav.orders, icon: BriefcaseBusiness, roles: ['ADMIN', 'MANAGER'] },
+  { href: '/salary', label: ru.nav.salary, icon: BarChart3, roles: ['ADMIN', 'ACCOUNTANT'] },
+  { href: '/salary-accruals', label: ru.nav.salaryAccruals, icon: WalletCards, roles: ['ADMIN', 'ACCOUNTANT'] },
+  { href: '/utility-accruals', label: ru.nav.utilityAccruals, icon: Building2, roles: ['ADMIN', 'ACCOUNTANT'] },
+  { href: '/other-counterparties', label: ru.nav.counterparties, icon: Contact, roles: ['ADMIN', 'ACCOUNTANT', 'MANAGER'] },
+  { href: '/dictionaries', label: ru.nav.dictionaries, icon: BookOpen, roles: ['ADMIN', 'ACCOUNTANT', 'MANAGER'] },
+  { href: '/balances', label: ru.nav.cashBalances, icon: WalletCards, roles: ['ADMIN', 'ACCOUNTANT', 'VIEWER'] },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const collapsed = useUiStore((state) => state.sidebarCollapsed);
   const toggle = useUiStore((state) => state.toggleSidebar);
   const theme = useUiStore((state) => state.theme);
   const setTheme = useUiStore((state) => state.setTheme);
   const toggleTheme = useUiStore((state) => state.toggleTheme);
+  const user = useAuthStore((state) => state.user);
+  const initialized = useAuthStore((state) => state.initialized);
+  const hydrate = useAuthStore((state) => state.hydrate);
+  const logout = useAuthStore((state) => state.logout);
 
   useEffect(() => {
+    hydrate();
     const saved = window.localStorage.getItem('erp-theme');
     if (saved === 'light' || saved === 'dark') {
       setTheme(saved);
     }
-  }, [setTheme]);
+  }, [hydrate, setTheme]);
+
+  useEffect(() => {
+    if (!initialized) return;
+    if (!user && !pathname.startsWith('/login')) {
+      router.replace('/login');
+    }
+    if (user && pathname.startsWith('/login')) {
+      router.replace('/dashboard');
+    }
+  }, [initialized, pathname, router, user]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem('erp-theme', theme);
   }, [theme]);
+
+  if (pathname.startsWith('/login')) {
+    return <div className="min-h-screen">{children}</div>;
+  }
+
+  if (!initialized || !user) {
+    return <div className="grid min-h-screen place-items-center text-sm text-[var(--muted-text)]">Загрузка...</div>;
+  }
+
+  const visibleItems = items.filter((item) => item.roles.includes(user.role));
+  const currentItem = items.find((item) => pathname.startsWith(item.href));
+  const hasAccess = !currentItem || currentItem.roles.includes(user.role);
 
   return (
     <div className="min-h-screen">
@@ -67,7 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {!collapsed && <span className="font-semibold">{ru.appName}</span>}
         </div>
         <nav className="p-2">
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon;
             const active = pathname.startsWith(item.href);
             return (
@@ -91,6 +122,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="theme-surface theme-border sticky top-0 z-10 flex h-12 items-center justify-between border-b px-4">
           <div className="text-sm font-semibold">{ru.workspace}</div>
           <div className="flex items-center gap-2">
+            <div className="theme-muted-text hidden text-xs sm:block">
+              {user.fullName} · {roleLabel(user.role)}
+            </div>
             <div className="theme-muted-text text-xs">UZS / USD</div>
             <button
               aria-label={theme === 'light' ? 'Включить ночной режим' : 'Включить дневной режим'}
@@ -100,10 +134,31 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
             </button>
+            <button
+              aria-label="Выйти"
+              className="theme-surface theme-border grid h-8 w-8 place-items-center rounded border"
+              onClick={() => {
+                logout();
+                router.replace('/login');
+              }}
+              title="Выйти"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </header>
-        <div className="p-4">{children}</div>
+        <div className="p-4">{hasAccess ? children : <div className="theme-surface theme-border rounded border p-6">Нет доступа</div>}</div>
       </main>
     </div>
   );
+}
+
+function roleLabel(role: UserRole) {
+  const labels: Record<UserRole, string> = {
+    ADMIN: 'Администратор',
+    ACCOUNTANT: 'Бухгалтер',
+    MANAGER: 'Менеджер',
+    VIEWER: 'Просмотр',
+  };
+  return labels[role];
 }

@@ -56,19 +56,19 @@ export class DirectoriesService {
     return item;
   }
 
-  async create(name: DirectoryName, body: Record<string, unknown>) {
+  async create(name: DirectoryName, body: Record<string, unknown>, userId = 'system') {
     const data = await this.normalizeData(name, body);
-    return this.getModel(name).create({ data: { ...data, createdBy: 'system' } });
+    return this.getModel(name).create({ data: { ...data, createdBy: userId } });
   }
 
-  async update(name: DirectoryName, id: string, body: Record<string, unknown>) {
+  async update(name: DirectoryName, id: string, body: Record<string, unknown>, userId = 'system') {
     const data = await this.normalizeData(name, body);
-    return this.getModel(name).update({ where: { id }, data: { ...data, updatedBy: 'system' } });
+    return this.getModel(name).update({ where: { id }, data: { ...data, updatedBy: userId } });
   }
 
-  async remove(name: DirectoryName, id: string) {
+  async remove(name: DirectoryName, id: string, userId = 'system') {
     await this.assertNotUsed(name, id);
-    return this.getModel(name).update({ where: { id }, data: { deletedAt: new Date(), updatedBy: 'system' } });
+    return this.getModel(name).update({ where: { id }, data: { deletedAt: new Date(), updatedBy: userId } });
   }
 
   private getModel(name: DirectoryName): PrismaModel {

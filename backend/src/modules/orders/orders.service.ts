@@ -21,7 +21,7 @@ export class OrdersService {
     return this.withPaymentInfo(await this.ordersRepository.findById(id));
   }
 
-  async create(dto: CreateOrderDto) {
+  async create(dto: CreateOrderDto, userId = 'system') {
     const startDate = new Date(dto.startDate);
     const setting = await this.prisma.setting.findUnique({ where: { key: 'averageOrderLengthDays' } });
     const averageDays = Number(setting?.value ?? 40);
@@ -42,23 +42,23 @@ export class OrdersService {
           amountUsd: dto.amountUsd,
           totalAmount: dto.totalAmount,
           structureAmount: dto.structureAmount,
-          createdBy: 'system',
+          createdBy: userId,
         },
       });
     });
   }
 
-  update(id: string, dto: UpdateOrderDto) {
+  update(id: string, dto: UpdateOrderDto, userId = 'system') {
     return this.prisma.$transaction((tx) => {
       return tx.order.update({
         where: { id },
-        data: { ...this.toUpdateData(dto), updatedBy: 'system' },
+        data: { ...this.toUpdateData(dto), updatedBy: userId },
       });
     });
   }
 
-  remove(id: string) {
-    return this.ordersRepository.remove(id);
+  remove(id: string, userId = 'system') {
+    return this.ordersRepository.remove(id, userId);
   }
 
   private toUpdateData(dto: UpdateOrderDto): Prisma.OrderUncheckedUpdateInput {

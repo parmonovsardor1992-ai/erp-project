@@ -1,12 +1,26 @@
-import { BalanceReportRow, Counterparty, DictionaryPayload, ExchangeTransaction, Order, SalaryAccrual, SalaryRecord, Transaction, TransactionType, UtilityAccrual } from './types';
+import {
+  BalanceReportRow,
+  Counterparty,
+  DictionaryPayload,
+  ExchangeTransaction,
+  LoginResponse,
+  Order,
+  SalaryAccrual,
+  SalaryRecord,
+  Transaction,
+  TransactionType,
+  UtilityAccrual,
+} from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = typeof window !== 'undefined' ? window.localStorage.getItem('erp-access-token') : null;
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });
@@ -20,6 +34,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // The backend may return plain text for older endpoints.
     }
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.localStorage.removeItem('erp-access-token');
+      window.localStorage.removeItem('erp-user');
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+    }
     throw new Error(message);
   }
 
@@ -27,6 +48,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  login: (body: { username: string; password: string }) =>
+    request<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   balances: () => request<Array<{ account: { id: string; name: string; type: string }; balanceUzs: string; balanceUsd: string }>>('/balances'),
   pointBalances: () => request<Array<{ point: string; balanceUzs: number; balanceUsd: number; totalUzs: number; totalUsd: number }>>('/balances/points'),
   balanceReport: (params = '') => request<BalanceReportRow[]>(`/balances/report${params}`),
